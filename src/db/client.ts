@@ -3,9 +3,11 @@ import { drizzle as drizzlePg } from "drizzle-orm/postgres-js";
 import { drizzle as drizzlePglite } from "drizzle-orm/pglite";
 import { migrate as migratePg } from "drizzle-orm/postgres-js/migrator";
 import { migrate as migratePglite } from "drizzle-orm/pglite/migrator";
+import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import * as schema from "./schema";
 
-export type Db = ReturnType<typeof drizzlePg<typeof schema>> | ReturnType<typeof drizzlePglite<typeof schema>>;
+/** Driver-agnostic database type (postgres-js and PGlite share the PgDatabase API). */
+export type Db = PgDatabase<PgQueryResultHKT, typeof schema>;
 
 const MIGRATIONS = path.join(process.cwd(), "drizzle");
 
@@ -22,7 +24,7 @@ export async function createDb(url?: string, opts: { migrate?: boolean } = {}): 
     const client = postgres(url, { max: Number(process.env.DB_POOL_SIZE ?? 5), prepare: false });
     const db = drizzlePg(client, { schema });
     if (opts.migrate) await migratePg(db, { migrationsFolder: MIGRATIONS });
-    return db;
+    return db as unknown as Db;
   }
   const { PGlite } = await import("@electric-sql/pglite");
   const { pg_trgm } = await import("@electric-sql/pglite/contrib/pg_trgm");
@@ -31,5 +33,11 @@ export async function createDb(url?: string, opts: { migrate?: boolean } = {}): 
   const client = new PGlite(dataDir, { extensions: { pg_trgm } });
   const db = drizzlePglite(client, { schema });
   if (opts.migrate !== false) await migratePglite(db, { migrationsFolder: MIGRATIONS });
-  return db;
+  return db as unknown as Db;
+}
+
+/** Normalises `db.execute()` results (postgres-js returns an array, PGlite returns `{ rows }`). */
+export function rowsOf<T>(result: unknown): T[] {
+  const r = result as { rows?: T[] } | T[];
+  return Array.isArray(r) ? r : (r.rows ?? []);
 }

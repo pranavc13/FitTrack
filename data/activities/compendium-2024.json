@@ -381,7 +381,13 @@
 "code": "02049",
 "heading": "Conditioning Exercise",
 "met": 9.0,
-"description": "Elliptical trainer, vigorous effort Conditioning Exercise 02050 6.0 Resistance (weight lifting - free weight, nautilus or universal-type), power lifting or body building, vigorous effort (Taylor Code 210)"
+"description": "Elliptical trainer, vigorous effort"
+},
+{
+"code": "02050",
+"heading": "Conditioning Exercise",
+"met": 6.0,
+"description": "Resistance (weight lifting - free weight, nautilus or universal-type), power lifting or body building, vigorous effort (Taylor Code 210)"
 },
 {
 "code": "02052",
@@ -489,7 +495,7 @@
 "code": "02074",
 "heading": "Conditioning Exercise",
 "met": 14.0,
-"description": "Rowing, stationary,  200 watts, very vigorous effort"
+"description": "Rowing, stationary, 200 watts, very vigorous effort"
 },
 {
 "code": "02078",
@@ -843,7 +849,13 @@
 "code": "03038",
 "heading": "Dancing",
 "met": 11.3,
-"description": "Ballroom dancing, competitive, general Dancing 03039 13.0 ballroom dance, DanceSport competition (modern waltz, tango, Viennese waltz, slow fox, quick step, samba, chacha, rumba, paso doble, jive)"
+"description": "Ballroom dancing, competitive, general"
+},
+{
+"code": "03039",
+"heading": "Dancing",
+"met": 13.0,
+"description": "ballroom dance, DanceSport competition (modern waltz, tango, Viennese waltz, slow fox, quick step, samba, chacha, rumba, paso doble, jive)"
 },
 {
 "code": "03040",
@@ -861,7 +873,13 @@
 "code": "03050",
 "heading": "Dancing",
 "met": 5.5,
-"description": "Anishinaabe Jingle dancing, brisk pace, other traditional American Indian dancing performed by women, moderate effort Dancing 03060 3.5 Caribbean dance (Abakua, Beguine, Bellair, Bongo, Brukin's, Caribbean Quadrills, Dinki Mini, Gere, Gumbay, Ibo, Jonkonnu, Kumina, Oreisha, Jambu)"
+"description": "Anishinaabe Jingle dancing, brisk pace, other traditional American Indian dancing performed by women, moderate effort"
+},
+{
+"code": "03060",
+"heading": "Dancing",
+"met": 3.5,
+"description": "Caribbean dance (Abakua, Beguine, Bellair, Bongo, Brukin's, Caribbean Quadrills, Dinki Mini, Gere, Gumbay, Ibo, Jonkonnu, Kumina, Oreisha, Jambu)"
 },
 {
 "code": "03070",
@@ -1287,7 +1305,13 @@
 "code": "05049",
 "heading": "Home Activities",
 "met": 3.5,
-"description": "Cooking or food preparation, moderate effort Home Activities 05050 2.0 Cooking or food preparation - standing or sitting or in general (not broken into stand/walk components), manual appliances, light effort"
+"description": "Cooking or food preparation, moderate effort"
+},
+{
+"code": "05050",
+"heading": "Home Activities",
+"met": 2.0,
+"description": "Cooking or food preparation - standing or sitting or in general (not broken into stand/walk components), manual appliances, light effort"
 },
 {
 "code": "05051",
@@ -1359,7 +1383,13 @@
 "code": "05082",
 "heading": "Home Activities",
 "met": 2.8,
-"description": "Sewing with a machine Home Activities 05090 2.3 Laundry, fold or hang clothes, put clothes in washer or dryer, packing suitcase, washing clothes by hand, implied standing, light effort"
+"description": "Sewing with a machine"
+},
+{
+"code": "05090",
+"heading": "Home Activities",
+"met": 2.3,
+"description": "Laundry, fold or hang clothes, put clothes in washer or dryer, packing suitcase, washing clothes by hand, implied standing, light effort"
 },
 {
 "code": "05091",
@@ -1431,7 +1461,13 @@
 "code": "05140",
 "heading": "Home Activities",
 "met": 3.0,
-"description": "Sweeping garage, sidewalk, or outside house Home Activities 05146 3.8 Standing, packing/unpacking boxes, occasional lifting lightweight household items, loading or unloading items into a car, moderate effort"
+"description": "Sweeping garage, sidewalk, or outside house"
+},
+{
+"code": "05146",
+"heading": "Home Activities",
+"met": 3.8,
+"description": "Standing, packing/unpacking boxes, occasional lifting lightweight household items, loading or unloading items into a car, moderate effort"
 },
 {
 "code": "05147",
@@ -2709,7 +2745,13 @@
 "code": "11125",
 "heading": "Occupation",
 "met": 2.3,
-"description": "Custodial work, light effort (e.g., cleaning sink and toilet, dusting, vacuuming, light cleaning) Occupation 11126 3.8 Custodial work, moderate effort (e.g., buffing floors with electric buffer, feathering or sweeping arena floors, mopping, taking out the trash, vaccuming)"
+"description": "Custodial work, light effort (e.g., cleaning sink and toilet, dusting, vacuuming, light cleaning)"
+},
+{
+"code": "11126",
+"heading": "Occupation",
+"met": 3.8,
+"description": "Custodial work, moderate effort (e.g., buffing floors with electric buffer, feathering or sweeping arena floors, mopping, taking out the trash, vaccuming)"
 },
 {
 "code": "11130",
@@ -2727,7 +2769,13 @@
 "code": "11145",
 "heading": "Occupation",
 "met": 7.8,
-"description": "Farming, vigorous effort (e.g., baling hay, cleaning barn), includes former code 11200 Occupation 11146 4.8 Farming, moderate effort (e.g., feeding animals, chasing cattle by walking and/or horseback, spreading manure, harvesting crops)"
+"description": "Farming, vigorous effort (e.g., baling hay, cleaning barn), includes former code"
+},
+{
+"code": "11146",
+"heading": "Occupation",
+"met": 4.8,
+"description": "Farming, moderate effort (e.g., feeding animals, chasing cattle by walking and/or horseback, spreading manure, harvesting crops)"
 },
 {
 "code": "11147",
@@ -2757,7 +2805,13 @@
 "code": "11191",
 "heading": "Occupation",
 "met": 4.3,
-"description": "Farming, hauling water for animals, fetching water from well or stream Occupation 11192 4.5 Farming, taking care of animals (e.g., grooming, brushing, shearing sheep, assisting with birthing, medical care, branding), general"
+"description": "Farming, hauling water for animals, fetching water from well or stream"
+},
+{
+"code": "11192",
+"heading": "Occupation",
+"met": 4.5,
+"description": "Farming, taking care of animals (e.g., grooming, brushing, shearing sheep, assisting with birthing, medical care, branding), general"
 },
 {
 "code": "11195",
@@ -2841,7 +2895,13 @@
 "code": "11264",
 "heading": "Occupation",
 "met": 5.0,
-"description": "Forestry, moderate effort (e.g., sawing wood with power saw, weeding, hoeing) Occupation 11266 8.5 Forestry, vigorous effort (e.g., barking, felling, or trimming trees, carrying or stacking logs, planting seeds, sawing lumber by hand )"
+"description": "Forestry, moderate effort (e.g., sawing wood with power saw, weeding, hoeing)"
+},
+{
+"code": "11266",
+"heading": "Occupation",
+"met": 8.5,
+"description": "Forestry, vigorous effort (e.g., barking, felling, or trimming trees, carrying or stacking logs, planting seeds, sawing lumber by hand )"
 },
 {
 "code": "11370",
@@ -3147,7 +3207,19 @@
 "code": "11593",
 "heading": "Occupation",
 "met": 2.8,
-"description": "Sitting, teaching stretching or yoga, or light effort exercise classes Occupation 11600 1.8 Standing tasks, light effort (e.g., bartending, store clerk, assembling, filing, duplicating, librarian, putting up a Christmas tree, standing and talking at work, changing clothes when teaching physical education) Occupation 11610 3.3 Standing, light/moderate effort (e.g., assemble/repair heavy parts, welding, stocking parts, auto repair, packing boxes, nursing patient care, laundry)"
+"description": "Sitting, teaching stretching or yoga, or light effort exercise classes"
+},
+{
+"code": "11600",
+"heading": "Occupation",
+"met": 1.8,
+"description": "Standing tasks, light effort (e.g., bartending, store clerk, assembling, filing, duplicating, librarian, putting up a Christmas tree, standing and talking at work, changing clothes when teaching physical education)"
+},
+{
+"code": "11610",
+"heading": "Occupation",
+"met": 3.3,
+"description": "Standing, light/moderate effort (e.g., assemble/repair heavy parts, welding, stocking parts, auto repair, packing boxes, nursing patient care, laundry)"
 },
 {
 "code": "11615",
@@ -3225,7 +3297,13 @@
 "code": "11763",
 "heading": "Occupation",
 "met": 2.0,
-"description": "Tailoring, weaving, light effort (e.g., finishing operations, washing, dyeing, inspecting cloth, counting yards, paperwork) Occupation 11765 4.0 Tailoring, weaving, moderate effort (e.g., spinning and weaving operations, delivering boxes of yarn to spinners, loading of warp bean, pinwinding, conewinding, warping, cloth clutting)"
+"description": "Tailoring, weaving, light effort (e.g., finishing operations, washing, dyeing, inspecting cloth, counting yards, paperwork)"
+},
+{
+"code": "11765",
+"heading": "Occupation",
+"met": 4.0,
+"description": "Tailoring, weaving, moderate effort (e.g., spinning and weaving operations, delivering boxes of yarn to spinners, loading of warp bean, pinwinding, conewinding, warping, cloth clutting)"
 },
 {
 "code": "11766",
@@ -4017,7 +4095,13 @@
 "code": "15130",
 "heading": "Sports",
 "met": 7.0,
-"description": "Broomball Sports 15135 5.8 Children's games, adults playing (e.g., hopscotch, 4-square, dodge ball, playground apparatus, t-ball, tetherball, marbles, jacks, arcade games), moderate effort"
+"description": "Broomball"
+},
+{
+"code": "15135",
+"heading": "Sports",
+"met": 5.8,
+"description": "Children's games, adults playing (e.g., hopscotch, 4-square, dodge ball, playground apparatus, t-ball, tetherball, marbles, jacks, arcade games), moderate effort"
 },
 {
 "code": "15138",
@@ -6411,7 +6495,7 @@
 "code": "20095",
 "heading": "Religious Activities",
 "met": 4.5,
-"description": "Standing, moderate-to-heavy effort, manual labor, lifting  50 lbs, heavy maintenance"
+"description": "Standing, moderate-to-heavy effort, manual labor, lifting 50 lbs, heavy maintenance"
 },
 {
 "code": "20100",

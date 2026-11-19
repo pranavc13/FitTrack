@@ -11,3 +11,4 @@ export function getDb(): Promise<Db> {
 
 export * as schema from "./schema";
 export type { Db } from "./client";
+export { rowsOf } from "./client";
