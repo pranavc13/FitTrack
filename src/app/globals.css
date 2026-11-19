@@ -1,0 +1,88 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #090b0a;
+  --color-surface: #141815;
+  --color-surface-2: #1b201c;
+  --color-surface-3: #232a25;
+  --color-line: #2a312c;
+  --color-ink: #f2f5f1;
+  --color-muted: #9aa49c;
+  --color-faint: #69736b;
+  --color-lime: #b6f34a;
+  --color-lime-deep: #8fcc22;
+  --color-lime-ink: #10170a;
+  --color-blue: #4aa8ff;
+  --color-orange: #ff9a3d;
+  --color-purple: #a78bfa;
+  --color-cyan: #2fd4e0;
+  --color-red: #ff5c5c;
+  --color-yellow: #ffd23f;
+
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-grotesk), var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+
+  --radius-card: 1.25rem;
+  --shadow-glow: 0 0 0 1px rgb(182 243 74 / 0.15), 0 8px 32px -8px rgb(182 243 74 / 0.25);
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+    -webkit-tap-highlight-color: transparent;
+    text-size-adjust: 100%;
+  }
+  body {
+    background: var(--color-bg);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    overscroll-behavior-y: none;
+    min-height: 100dvh;
+  }
+  /* 16px inputs prevent iOS/Android zoom-on-focus */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-lime);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: rgb(182 243 74 / 0.35);
+  }
+}
+
+@layer utilities {
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .card-gradient {
+    background: radial-gradient(120% 120% at 0% 0%, rgb(182 243 74 / 0.08) 0%, transparent 45%), var(--color-surface);
+  }
+  .glow-lime {
+    box-shadow: var(--shadow-glow);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

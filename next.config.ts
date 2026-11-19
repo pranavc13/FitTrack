@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Pin the project root (a stray lockfile in a parent folder would otherwise be picked up).
+  outputFileTracingRoot: process.cwd(),
   // PGlite ships WASM + data files that must be loaded from node_modules at runtime.
   serverExternalPackages: ["@electric-sql/pglite", "web-push"],
   experimental: {

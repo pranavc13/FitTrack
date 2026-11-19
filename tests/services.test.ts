@@ -20,7 +20,7 @@ import { ApiError } from "@/lib/errors";
 let db: Db;
 let alice: string;
 let bob: string;
-const ids: Record<string, number> = {};
+const ids = {} as Record<string, number> & Record<"paneer" | "rice" | "oil" | "onion" | "pushup", number>;
 const DAY = "2026-03-10";
 
 async function food(name: string, n: Partial<typeof s.foods.$inferInsert>) {

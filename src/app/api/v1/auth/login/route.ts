@@ -22,7 +22,8 @@ export async function POST(req: NextRequest) {
     if (!user || !ok) throw new ApiError(401, "Incorrect email or password");
     const { token, expiresAt } = await createSession(user.id, req.headers.get("user-agent"));
     await setSessionCookie(token, expiresAt);
-    return NextResponse.json({ user: { id: user.id, name: user.name, email: user.email }, token });
+    // Token in the body only for native clients (web uses the httpOnly cookie exclusively).
+    return NextResponse.json({ user: { id: user.id, name: user.name, email: user.email }, ...(req.headers.get("x-client") === "native" ? { token } : {}) });
   } catch (e) {
     return errorResponse(e);
   }

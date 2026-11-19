@@ -89,7 +89,7 @@ export async function addEntry(db: Db, userId: string, input: AddEntryInput) {
       recipeId: p.food.recipeId,
       name: input.displayName?.trim() || p.food.name,
       quantity: input.quantity,
-      unit: input.grams ? `${input.unit}` : input.unit,
+      unit: p.unitLabel ?? input.unit,
       grams: round(p.grams, 1),
       kcal: n.kcal ?? 0,
       proteinG: n.proteinG ?? 0,

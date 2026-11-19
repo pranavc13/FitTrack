@@ -136,14 +136,20 @@ export async function portionNutrition(db: Db, userId: string, foodId: number, q
     .from(s.foods)
     .where(and(eq(s.foods.id, foodId), or(isNull(s.foods.ownerUserId), eq(s.foods.ownerUserId, userId))));
   if (!food) throw notFound("Food");
-  const servings: ServingOption[] = (await db.select().from(s.foodServings).where(eq(s.foodServings.foodId, foodId))).map((sv) => ({
-    label: sv.label,
-    unit: sv.unit,
-    amount: sv.amount,
-    grams: sv.grams,
-  }));
+  const rows = await db.select().from(s.foodServings).where(eq(s.foodServings.foodId, foodId));
+  // "serving:<id>" selects one exact household measure (foods often have several "piece" sizes).
+  const exact = /^serving:(\d+)$/.exec(unit);
+  if (exact) {
+    const sv = rows.find((r) => r.id === Number(exact[1]));
+    if (!sv) throw new ApiError(400, "That serving size doesn't belong to this food");
+    if (!(quantity > 0)) throw new RangeError("Quantity must be a positive number");
+    const grams = (quantity / (sv.amount || 1)) * sv.grams;
+    // The label (e.g. "1 cup, chopped") is stored as the entry's unit and re-resolves on edit.
+    return { food, grams, isEstimate: false, basis: sv.label, unitLabel: sv.label.replace(/^[\d.\/]+\s+/, ""), nutrients: scaleNutrients(per100(food), grams) };
+  }
+  const servings: ServingOption[] = rows.map((sv) => ({ label: sv.label, unit: sv.unit, amount: sv.amount, grams: sv.grams }));
   const resolved = resolveGrams(quantity, unit, [...servings, ...(["katori", "bowl", "glass"].includes(unit) ? GENERIC_MEASURES : [])], food.densityGPerMl);
-  return { food, grams: resolved.grams, isEstimate: resolved.isEstimate, basis: resolved.basis, nutrients: scaleNutrients(per100(food), resolved.grams) };
+  return { food, grams: resolved.grams, isEstimate: resolved.isEstimate, basis: resolved.basis, unitLabel: null as string | null, nutrients: scaleNutrients(per100(food), resolved.grams) };
 }
 
 export interface CustomFoodInput {
