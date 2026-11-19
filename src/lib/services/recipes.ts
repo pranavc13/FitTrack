@@ -136,7 +136,7 @@ export async function getRecipe(db: Db, userId: string, id: number, scaleServing
   };
 }
 
-function roundAll(n: Record<string, number>) {
+function roundAll(n: Record<(typeof CORE_NUTRIENTS)[number], number>) {
   return Object.fromEntries(CORE_NUTRIENTS.map((k) => [k, round(n[k] ?? 0, k === "kcal" ? 0 : 1)]));
 }
 

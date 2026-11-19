@@ -160,7 +160,7 @@ export async function nutritionScore(db: Db, userId: string, date: string) {
   const atLeast = (actual: number, target: number) => Math.min(1, actual / target);
   const entries = day.meals.flatMap((m) => m.entries);
   const distinctFoods = new Set(entries.map((e) => e.foodId ?? e.name)).size;
-  const missingCore = Object.values(day.totals.missing).reduce((a, b) => a + (b ?? 0), 0);
+  const missingCore = Object.values(day.totals.missing).reduce<number>((a, b) => a + (b ?? 0), 0);
   const completeness = 1 - missingCore / Math.max(1, entries.length * 11);
   const components = [
     { key: "energy", label: "Calories near target (±15%)", weight: 25, value: closeness(day.totals.kcal, t.calories, 0.3) },
