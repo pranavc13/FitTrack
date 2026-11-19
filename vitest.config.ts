@@ -9,5 +9,7 @@ export default defineConfig({
     testTimeout: 60_000,
     hookTimeout: 120_000,
     pool: "forks",
+    // Load PGlite natively so its WASM/extension bundles resolve from node_modules.
+    server: { deps: { external: ["@electric-sql/pglite"] } },
   },
 });

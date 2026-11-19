@@ -27,6 +27,13 @@ export async function verifyPassword(password: string, hash: string) {
   return bcrypt.compare(password, hash);
 }
 
+let dummy: Promise<string> | null = null;
+/** A real hash to compare against when the email doesn't exist, so response time doesn't leak it. */
+export function dummyHash() {
+  dummy ??= bcrypt.hash("not-a-real-password", 12);
+  return dummy;
+}
+
 export async function createSession(userId: string, userAgent?: string | null): Promise<{ token: string; expiresAt: Date }> {
   const db = await getDb();
   const token = randomBytes(32).toString("base64url");

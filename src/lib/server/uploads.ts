@@ -1,0 +1,46 @@
+import "server-only";
+import type { NextRequest } from "next/server";
+import { ApiError } from "@/lib/errors";
+import { MAX_IMAGE_BYTES, saveImage, sniffImageType } from "@/lib/storage";
+import type { ImageInput } from "@/lib/ai/client";
+
+export async function formData(req: NextRequest) {
+  try {
+    return await req.formData();
+  } catch {
+    throw new ApiError(400, "Expected multipart form data");
+  }
+}
+
+/** Reads up to `max` images from a multipart field, validates them and stores them privately. */
+export async function readAndStoreImages(form: FormData, userId: string, folder: "scans" | "progress" | "labels", max = 3) {
+  const files = form.getAll("images").filter((f): f is File => f instanceof File && f.size > 0);
+  if (!files.length) throw new ApiError(400, "Attach at least one photo");
+  if (files.length > max) throw new ApiError(400, `At most ${max} photos`);
+  const keys: string[] = [];
+  const images: ImageInput[] = [];
+  for (const file of files) {
+    if (file.size > MAX_IMAGE_BYTES) throw new ApiError(413, "Each photo must be under 8 MB");
+    const buf = Buffer.from(await file.arrayBuffer());
+    const type = sniffImageType(buf);
+    if (type !== "image/jpeg" && type !== "image/png" && type !== "image/webp") {
+      throw new ApiError(415, "Use JPEG, PNG or WebP photos (the app converts camera photos automatically)");
+    }
+    const { key } = await saveImage(userId, folder, buf);
+    keys.push(key);
+    images.push({ mediaType: type, base64: buf.toString("base64") });
+  }
+  return { keys, images };
+}
+
+export function fieldStr(form: FormData, name: string): string | null {
+  const v = form.get(name);
+  return typeof v === "string" && v.trim() ? v.trim() : null;
+}
+
+export function fieldNum(form: FormData, name: string): number | null {
+  const v = fieldStr(form, name);
+  if (v == null) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}

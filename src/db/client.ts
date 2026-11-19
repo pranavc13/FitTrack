@@ -30,7 +30,7 @@ export async function createDb(url?: string, opts: { migrate?: boolean } = {}): 
   const { pg_trgm } = await import("@electric-sql/pglite/contrib/pg_trgm");
   const dataDir = url === "memory://" ? undefined : path.join(process.cwd(), ".data", "pglite");
   if (dataDir) (await import("node:fs")).mkdirSync(path.dirname(dataDir), { recursive: true });
-  const client = new PGlite(dataDir, { extensions: { pg_trgm } });
+  const client = new PGlite({ dataDir, extensions: { pg_trgm } });
   const db = drizzlePglite(client, { schema });
   if (opts.migrate !== false) await migratePglite(db, { migrationsFolder: MIGRATIONS });
   return db as unknown as Db;
