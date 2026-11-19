@@ -4,7 +4,7 @@ import * as s from "@/db/schema";
 import { INGREDIENTS, type IngredientKey } from "@/data/ingredients";
 import { addDays } from "@/lib/dates";
 import { round } from "@/lib/nutrition/engine";
-import { fitsDiet } from "@/lib/recipes/diet";
+import { fitsDiet, violatesAllergies } from "@/lib/recipes/diet";
 import { ApiError, notFound } from "@/lib/errors";
 import { normalizeQuery } from "./foods";
 
@@ -107,9 +107,8 @@ async function loadCandidates(db: Db): Promise<Map<string, Candidate>> {
 
 function allowed(c: Candidate, p: PlanPrefs) {
   if (!fitsDiet(c.dietTags, p.diet)) return false;
-  const allergy = p.allergies.map((a) => a.toLowerCase());
-  const names = c.ingredientKeys.flatMap((k) => INGREDIENTS[k].names.map((n) => n.name.toLowerCase()).concat(k));
-  if (allergy.some((a) => a && names.some((n) => n.includes(a) || (a.includes("dairy") && ["paneer", "curd", "milk", "cream", "ghee", "butter", "cheese"].some((d) => n.includes(d))) || (a.includes("gluten") && ["atta", "maida", "sooji", "pav", "noodles", "pasta", "dalia"].some((d) => n.includes(d)))))) return false;
+  const names = c.ingredientKeys.flatMap((k) => INGREDIENTS[k].names.map((n) => n.name).concat(k.replace(/_/g, " ")));
+  if (violatesAllergies(names, p.allergies)) return false;
   if (p.maxCookMinutes && c.totalMinutes > p.maxCookMinutes) return false;
   return true;
 }

@@ -5,7 +5,9 @@ import { addDays, formatDateLabel } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
 export function DateStrip({ date, today, onChange }: { date: string; today: string; onChange: (d: string) => void }) {
-  const days = Array.from({ length: 7 }, (_, i) => addDays(date, i - 3));
+  // Mostly past days: future dates can't be logged, so they only take one slot.
+  const anchor = date >= today ? today : date;
+  const days = Array.from({ length: 7 }, (_, i) => addDays(anchor, i - 5));
   return (
     <div className="flex items-center gap-1">
       <button className="grid h-10 w-9 shrink-0 place-items-center rounded-xl text-muted hover:bg-surface-2" onClick={() => onChange(addDays(date, -1))} aria-label="Previous day">

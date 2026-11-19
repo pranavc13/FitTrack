@@ -185,3 +185,24 @@ describe("trends", () => {
     expect(streak(["2026-03-01"], "2026-03-05")).toBe(0);
   });
 });
+
+import { dietTagsFor, violatesAllergies } from "@/lib/recipes/diet";
+
+describe("diet & allergy filtering", () => {
+  it("derives diet tags from ingredients", () => {
+    expect(dietTagsFor(["paneer", "onion", "oil"])).toEqual(expect.arrayContaining(["vegetarian", "eggetarian"]));
+    expect(dietTagsFor(["paneer", "onion"])).not.toContain("vegan");
+    expect(dietTagsFor(["paneer", "onion"])).not.toContain("jain");
+    expect(dietTagsFor(["tofu", "spinach", "oil"])).toEqual(expect.arrayContaining(["vegan", "jain"]));
+    expect(dietTagsFor(["chicken", "onion"])).not.toContain("vegetarian");
+    expect(dietTagsFor(["fish", "rice"])).toContain("pescatarian");
+  });
+  it("maps onboarding allergy labels to ingredient keywords", () => {
+    expect(violatesAllergies(["kaju", "rice"], ["Tree nuts"])).toBe(true);
+    expect(violatesAllergies(["paneer"], ["Milk / dairy"])).toBe(true);
+    expect(violatesAllergies(["atta"], ["Gluten"])).toBe(true);
+    expect(violatesAllergies(["prawns"], ["Shellfish"])).toBe(true);
+    expect(violatesAllergies(["rice", "moong dal"], ["Peanut", "Soy"])).toBe(false);
+    expect(violatesAllergies(["brinjal"], ["brinjal"])).toBe(true);
+  });
+});

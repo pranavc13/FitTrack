@@ -37,12 +37,19 @@ export interface ButtonProps extends ComponentProps<"button">, VariantProps<type
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(({ className, variant, size, asChild, loading, children, disabled, ...props }, ref) => {
-  const Comp = asChild ? Slot : "button";
+  if (asChild) {
+    // Slot requires exactly one child element (e.g. a <Link>), so no spinner wrapper here.
+    return (
+      <Slot ref={ref} className={cn(buttonVariants({ variant, size }), className)} {...props}>
+        {children}
+      </Slot>
+    );
+  }
   return (
-    <Comp ref={ref} className={cn(buttonVariants({ variant, size }), className)} disabled={disabled || loading} {...props}>
+    <button ref={ref} className={cn(buttonVariants({ variant, size }), className)} disabled={disabled || loading} {...props}>
       {loading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
       {children}
-    </Comp>
+    </button>
   );
 });
 Button.displayName = "Button";

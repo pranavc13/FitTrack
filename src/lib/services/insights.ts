@@ -4,7 +4,7 @@ import * as s from "@/db/schema";
 import { INGREDIENTS } from "@/data/ingredients";
 import { addDays, dateRange } from "@/lib/dates";
 import { round } from "@/lib/nutrition/engine";
-import { fitsDiet } from "@/lib/recipes/diet";
+import { fitsDiet, violatesAllergies } from "@/lib/recipes/diet";
 import { getDay } from "./diary";
 import { getRange } from "./summary";
 
@@ -63,10 +63,8 @@ const EGG_KEYS = new Set(["egg", "egg_white"]);
 const DAIRY_KEYS = new Set(["paneer", "greek_yogurt", "curd", "toned_milk", "milk"]);
 
 function allowed(key: string, diet: string, allergies: string[]) {
-  if (allergies.some((a) => (a.includes("dairy") || a.includes("milk") || a.includes("lactose")) && DAIRY_KEYS.has(key))) return false;
-  if (allergies.some((a) => a.includes("peanut")) && key === "peanuts") return false;
-  if (allergies.some((a) => a.includes("soy")) && ["soya_chunks", "tofu"].includes(key)) return false;
-  if (allergies.some((a) => a.includes("egg")) && EGG_KEYS.has(key)) return false;
+  const def = INGREDIENTS[key as keyof typeof INGREDIENTS];
+  if (violatesAllergies([key.replace(/_/g, " "), ...(def ? def.names.map((n) => n.name) : [])], allergies)) return false;
   const tags = MEAT_KEYS.has(key) ? (key === "fish" ? ["pescatarian", "non_vegetarian"] : ["non_vegetarian"]) : EGG_KEYS.has(key) ? ["eggetarian", "non_vegetarian", "pescatarian"] : DAIRY_KEYS.has(key) ? ["vegetarian", "eggetarian", "pescatarian", "non_vegetarian", "jain"] : ["vegetarian", "vegan", "eggetarian", "pescatarian", "non_vegetarian", "jain"];
   return fitsDiet(tags, diet);
 }

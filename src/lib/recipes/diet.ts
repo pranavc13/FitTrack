@@ -27,6 +27,32 @@ export function fitsDiet(tags: string[], pref: string): boolean {
   return pref === "non_vegetarian" ? true : tags.includes(pref);
 }
 
+/** Allergy/intolerance labels (as chosen in onboarding) → ingredient name keywords that trigger them. */
+const ALLERGEN_KEYWORDS: [RegExp, string[]][] = [
+  [/milk|dairy|lactose/, ["milk", "paneer", "curd", "dahi", "yogurt", "cream", "malai", "ghee", "butter", "cheese", "whey", "lassi", "chaas"]],
+  [/gluten|wheat/, ["atta", "maida", "wheat", "sooji", "rava", "semolina", "pav", "bread", "noodles", "pasta", "dalia", "bulgur", "barley"]],
+  [/peanut|groundnut/, ["peanut", "moongphali", "groundnut"]],
+  [/tree ?nut|nuts/, ["cashew", "kaju", "almond", "badam", "walnut", "akhrot", "pistachio", "pista"]],
+  [/soy/, ["soy", "soya", "tofu"]],
+  [/egg/, ["egg", "anda"]],
+  [/shellfish|prawn|shrimp/, ["prawn", "shrimp", "jhinga"]],
+  [/fish/, ["fish", "rohu", "mackerel", "bangda", "machli"]],
+  [/sesame|til/, ["sesame", "til"]],
+  [/mustard/, ["mustard", "sarson", "rai"]],
+];
+
+/** True when any ingredient name matches one of the user's allergies/intolerances. */
+export function violatesAllergies(ingredientNames: string[], allergies: string[]): boolean {
+  const names = ingredientNames.map((n) => n.toLowerCase());
+  return allergies.some((raw) => {
+    const a = raw.toLowerCase().trim();
+    if (!a) return false;
+    const mapped = ALLERGEN_KEYWORDS.find(([re]) => re.test(a))?.[1];
+    const keywords = mapped ?? [a];
+    return names.some((n) => keywords.some((k) => n.includes(k)));
+  });
+}
+
 export function ingredientGroup(key: IngredientKey): string {
   return INGREDIENTS[key].group;
 }
