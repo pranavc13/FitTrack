@@ -239,3 +239,14 @@ describe("labels, reports and security", () => {
     await expect(rateLimit(db, "test-key", 2)).rejects.toMatchObject({ status: 429 });
   });
 });
+
+import { matchIngredient } from "@/lib/services/recipes";
+
+describe("recipe ingredient matching", () => {
+  it("prefers the curated ingredient over look-alike synonyms", async () => {
+    const tofu = await food("Tofu, raw, firm, prepared with calcium sulfate", { kcal: 144, proteinG: 17, carbsG: 3, fatG: 9, state: "raw", foodType: "ingredient" });
+    await db.insert(s.foodSynonyms).values({ foodId: tofu, name: "soy paneer", language: "en" });
+    expect((await matchIngredient(db, alice, "Paneer"))[0]?.id).toBe(ids.paneer);
+    expect((await matchIngredient(db, alice, "oil"))[0]?.id).toBe(ids.oil);
+  });
+});

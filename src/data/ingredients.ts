@@ -145,7 +145,7 @@ export const INGREDIENTS = {
   tofu: { usda: "Tofu, raw, firm, prepared with calcium sulfate", names: n("tofu", "soy paneer"), group: "protein", priceInrPerKg: 300 },
 
   // ---- Fats & sugars ----
-  oil: { usda: "Oil, soybean, salad or cooking", names: n("tel", "cooking oil", "refined oil", "vegetable oil", "soybean oil", ["तेल", "hi"]), group: "fats", role: "fat", priceInrPerKg: 150 },
+  oil: { usda: "Oil, soybean, salad or cooking", names: n("oil", "tel", "cooking oil", "refined oil", "vegetable oil", "soybean oil", ["तेल", "hi"]), group: "fats", role: "fat", priceInrPerKg: 150 },
   mustard_oil: { usda: "Oil, mustard", names: n("sarson ka tel", "mustard oil", "kachi ghani", ["सरसों का तेल", "hi"]), group: "fats", role: "fat", priceInrPerKg: 180 },
   coconut_oil: { usda: "Oil, coconut", names: n("coconut oil", "nariyal tel", "velichenna"), group: "fats", role: "fat", priceInrPerKg: 250 },
   groundnut_oil: { usda: "Oil, peanut, salad or cooking", names: n("groundnut oil", "moongphali tel", "peanut oil", "kadalai ennai"), group: "fats", role: "fat", priceInrPerKg: 200 },

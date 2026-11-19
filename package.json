@@ -18,7 +18,8 @@
     "db:setup": "npm run db:migrate && npm run db:import:usda && npm run db:seed",
     "icons": "tsx scripts/generate-icons.ts",
     "test:ui": "tsx scripts/ui-smoke.ts",
-    "db:parse-compendium": "pdftotext -raw data/raw/compendium_2024.pdf data/raw/c_raw.txt && python -I scripts/parse-compendium.py data/raw/c_raw.txt data/activities/compendium-2024.json"
+    "db:parse-compendium": "pdftotext -raw data/raw/compendium_2024.pdf data/raw/c_raw.txt && python -I scripts/parse-compendium.py data/raw/c_raw.txt data/activities/compendium-2024.json",
+    "ai:check": "tsx scripts/check-gemini.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.3.8",

@@ -3,7 +3,9 @@ import { rowsOf, type Db } from "@/db/client";
 import * as s from "@/db/schema";
 import { computeRecipeNutrition, CORE_NUTRIENTS, round, scaleNutrients, type IngredientRole, type Nutrients } from "@/lib/nutrition/engine";
 import { ApiError, notFound } from "@/lib/errors";
-import { normalizeQuery, per100, searchFoods } from "./foods";
+import { normalizeQuery, per100, searchFoods, type FoodSearchResult } from "./foods";
+import { keyForName } from "./mealplan";
+import { INGREDIENTS } from "@/data/ingredients";
 
 type FoodRow = typeof s.foods.$inferSelect;
 
@@ -378,10 +380,19 @@ function delta(before: Nutrients, after: Nutrients, servings: number) {
 /** Candidate catalogue foods for a free-text ingredient name (for AI recipe parsing / scan matching). */
 export async function matchIngredient(db: Db, userId: string, name: string, preferRaw = true) {
   const results = await searchFoods(db, userId, name, { limit: 8 });
-  // Prefer raw ingredients for recipe building (cooked/prepared dishes double-count cooking).
-  const ranked = preferRaw
-    ? [...results].sort((a, b) => Number(b.state === "raw" || b.foodType === "ingredient") - Number(a.state === "raw" || a.foodType === "ingredient"))
-    : results;
+  const q = normalizeQuery(name);
+  // 1) The curated ingredient map wins when the name is an exact known name ("paneer", "oil", "atta").
+  const key = keyForName(name);
+  const curated = key && key !== "water" ? (await db.select().from(s.foods).where(and(eq(s.foods.name, INGREDIENTS[key].usda), isNull(s.foods.ownerUserId))))[0] : undefined;
+  // 2) Then results whose name/synonym matches exactly, 3) then raw ingredients (cooked dishes would double-count cooking).
+  const exact = (r: FoodSearchResult) => normalizeQuery(r.matchedSynonym ?? "") === q || normalizeQuery(r.name) === q;
+  const rawish = (r: FoodSearchResult) => r.state === "raw" || r.foodType === "ingredient";
+  const ranked = [...results].sort((a, b) => Number(exact(b)) - Number(exact(a)) || (preferRaw ? Number(rawish(b)) - Number(rawish(a)) : 0));
+  if (curated) {
+    const hit = ranked.find((r) => r.id === curated.id);
+    const top = hit ?? { id: curated.id, name: curated.name, nameHi: curated.nameHi, brand: null, foodType: curated.foodType, state: curated.state, kcal: curated.kcal, proteinG: curated.proteinG, carbsG: curated.carbsG, fatG: curated.fatG, fibreG: curated.fibreG, dataQuality: curated.dataQuality, confidence: curated.confidence, source: null, recipeId: null, isCustom: false, matchedSynonym: name, defaultServing: null };
+    return [top, ...ranked.filter((r) => r.id !== curated.id)].slice(0, 5);
+  }
   return ranked.slice(0, 5);
 }
 

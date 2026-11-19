@@ -7,7 +7,7 @@ import { addDays, todayIn } from "@/lib/dates";
 import { ApiError } from "@/lib/errors";
 import { round } from "@/lib/nutrition/engine";
 import { adaptiveTdee } from "@/lib/analytics/trends";
-import { AI_MODEL, checkFinish, getGenAI, mapAiError, thinkingLevel, toGeminiSchema } from "./client";
+import { checkFinish, generateWithFallback, mapAiError, thinkingLevel, toGeminiSchema } from "./client";
 import { getDay } from "@/lib/services/diary";
 import { getRange } from "@/lib/services/summary";
 import { getProfileBundle } from "@/lib/services/profile";
@@ -190,12 +190,14 @@ export async function coachReply(db: Db, userId: string, input: { conversationId
   const toolCalls: { name: string; input: unknown }[] = [];
   let text = "";
   try {
+    let model: string | undefined;
     for (let round = 0; round < 8; round++) {
-      const res = await getGenAI().models.generateContent({
-        model: AI_MODEL,
-        contents,
-        config: { systemInstruction: SYSTEM, tools: [{ functionDeclarations: declarations }], maxOutputTokens: 8000, thinkingConfig: { thinkingLevel: thinkingLevel("medium") } },
-      });
+      const out = await generateWithFallback(
+        { contents, config: { systemInstruction: SYSTEM, tools: [{ functionDeclarations: declarations }], maxOutputTokens: 8000, thinkingConfig: { thinkingLevel: thinkingLevel("medium") } } },
+        model,
+      );
+      const res = out.res;
+      model ??= out.model;
       checkFinish(res);
       const calls = res.functionCalls ?? [];
       const modelContent = res.candidates?.[0]?.content;

@@ -22,7 +22,7 @@ An AI-powered fitness, nutrition and body-transformation tracker built mobile-fi
 | Body transformation | ✅ | Weight trend (EWMA), plateau detection, time-to-target ranges, measurements, private photos, compare slider, milestones |
 | Insights, planner, grocery, pantry, reports | ✅ | Protein/fibre gaps, hidden calories, nutrition score, weekly budget, meal plans, grocery lists, PDF/CSV export |
 | Offline | ✅ | Viewed pages and data are cached; food, water, weight, steps and activity logs queue offline and sync later |
-| **AI meal photos, label OCR, recipe parsing, coach** | 🔑 Needs `GEMINI_API_KEY` | Google Gemini, default `gemini-3.8-flash` (override with `GEMINI_MODEL`). Without a key these features show a clear "not configured" state and everything else works |
+| **AI meal photos, label OCR, recipe parsing, coach** | 🔑 Needs `GEMINI_API_KEY` | Google Gemini with automatic fallback: `gemini-3.8-flash` → `gemini-3.5-flash-lite` → `gemini-3.1-flash-lite` (override with `GEMINI_MODEL`; check your key with `npm run ai:check`). Without a key these features show a clear "not configured" state and everything else works |
 | Barcode lookup | 🌐 Needs internet | Open Food Facts (ODbL) |
 | Push reminders | 🔑 Needs VAPID keys + a cron | See [Deployment](#deploy) |
 | Live Google Fit / Health Connect sync | ❌ Not possible in a web app | **File import** of Google Takeout / Health Connect exports is supported. Live sync needs the native Android wrapper (see [Native Android](#native-android)) |
