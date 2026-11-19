@@ -1,5 +1,4 @@
-import type Anthropic from "@anthropic-ai/sdk";
-import { betaZodTool } from "@anthropic-ai/sdk/helpers/beta/zod";
+import type { Content, FunctionCall, Part } from "@google/genai";
 import { and, asc, desc, eq } from "drizzle-orm";
 import { z } from "zod/v4";
 import type { Db } from "@/db/client";
@@ -8,7 +7,7 @@ import { addDays, todayIn } from "@/lib/dates";
 import { ApiError } from "@/lib/errors";
 import { round } from "@/lib/nutrition/engine";
 import { adaptiveTdee } from "@/lib/analytics/trends";
-import { AI_MODEL, FALLBACK_BETA, getAnthropic, mapAiError } from "./client";
+import { AI_MODEL, checkFinish, getGenAI, mapAiError, thinkingLevel, toGeminiSchema } from "./client";
 import { getDay } from "@/lib/services/diary";
 import { getRange } from "@/lib/services/summary";
 import { getProfileBundle } from "@/lib/services/profile";
@@ -34,10 +33,18 @@ Safety:
 
 Style: concise, practical, mobile-friendly (short paragraphs or bullets), metric units, Indian food examples that fit the user's diet preference. End with one clear next action when helpful.`;
 
-export function coachTools(db: Db, userId: string, today: string) {
+interface CoachTool<S extends z.ZodType = z.ZodType> {
+  name: string;
+  description: string;
+  inputSchema: S;
+  run: (input: z.infer<S>) => Promise<string>;
+}
+const tool = <S extends z.ZodType>(t: CoachTool<S>) => t as unknown as CoachTool;
+
+export function coachTools(db: Db, userId: string, today: string): CoachTool[] {
   const dateArg = z.string().describe("YYYY-MM-DD");
   return [
-    betaZodTool({
+    tool({
       name: "get_profile_and_targets",
       description: "User profile (age, height, diet preference, allergies, goal) and current daily targets with how they were calculated (BMR, baseline, TDEE).",
       inputSchema: z.object({}),
@@ -47,7 +54,7 @@ export function coachTools(db: Db, userId: string, today: string) {
         return JSON.stringify({ today, name: b.user?.name, profile: b.profile, targets: b.targets, activeGoal: goal ? { type: goal.goal.type, startDate: goal.goal.startDate, startWeightKg: goal.goal.startWeightKg, targetWeightKg: goal.goal.targetWeightKg, progress: goal.progress, milestones: goal.milestones.map((m) => ({ title: m.title, achieved: Boolean(m.achievedAt) })) } : null });
       },
     }),
-    betaZodTool({
+    tool({
       name: "get_day_log",
       description: "Everything logged on one day: meals with each food entry and nutrients, day totals, activities, steps, water and sleep.",
       inputSchema: z.object({ date: dateArg }),
@@ -62,7 +69,7 @@ export function coachTools(db: Db, userId: string, today: string) {
         });
       },
     }),
-    betaZodTool({
+    tool({
       name: "get_daily_summaries",
       description: "Per-day totals over a date range (max 120 days): intake, macros, fibre, exercise net kcal (estimate), steps, water, sleep, estimated expenditure, and whether food was logged.",
       inputSchema: z.object({ from: dateArg, to: dateArg }),
@@ -75,7 +82,7 @@ export function coachTools(db: Db, userId: string, today: string) {
         return JSON.stringify({ from: start, to, daysLogged: logged.length, days: rows.length, averagesOnLoggedDays: { kcalIn: avg("kcalIn"), proteinG: avg("proteinG"), fibreG: avg("fibreG"), expenditure: avg("expenditure"), steps: avg("steps") }, rows });
       },
     }),
-    betaZodTool({
+    tool({
       name: "get_weight_and_body_trends",
       description: "Weight history with smoothed trend weight, plateau analysis, estimated time-to-target range, body measurements, and an intake-based adaptive maintenance estimate when enough data exists.",
       inputSchema: z.object({ days: z.number().describe("History window in days, e.g. 90") }),
@@ -86,7 +93,7 @@ export function coachTools(db: Db, userId: string, today: string) {
         return JSON.stringify({ history: history.slice(-60), analysis, adaptiveMaintenance: tdee, measurements: measures.slice(-12) });
       },
     }),
-    betaZodTool({
+    tool({
       name: "get_nutrition_insights",
       description: "For a date: remaining protein and fibre with diet-appropriate food suggestions (from the database), the transparent nutrition score, and hidden calories (oil/ghee/sugar/drinks) over the past 7 days.",
       inputSchema: z.object({ date: dateArg }),
@@ -95,13 +102,13 @@ export function coachTools(db: Db, userId: string, today: string) {
         return JSON.stringify({ protein: p, fibre: f, score: sc, hiddenCaloriesLast7Days: h });
       },
     }),
-    betaZodTool({
+    tool({
       name: "search_foods",
       description: "Search the food database (USDA-based + Indian recipe calculations) by English, Hindi or regional name. Returns per-100 g nutrition and default serving.",
       inputSchema: z.object({ query: z.string() }),
       run: async ({ query }) => JSON.stringify((await searchFoods(db, userId, query, { limit: 6 })).map((f) => ({ id: f.id, name: f.name, kcal100: f.kcal, protein100: f.proteinG, carbs100: f.carbsG, fat100: f.fatG, fibre100: f.fibreG, serving: f.defaultServing, dataQuality: f.dataQuality }))),
     }),
-    betaZodTool({
+    tool({
       name: "find_recipes",
       description: "Find recipes in the library with per-serving nutrition, filtered by the user's diet. Use for meal suggestions.",
       inputSchema: z.object({ query: z.string().describe("Dish name or ingredient; empty for all"), highProtein: z.boolean(), region: z.string().describe("e.g. 'South Indian' or empty") }),
@@ -111,7 +118,7 @@ export function coachTools(db: Db, userId: string, today: string) {
         return JSON.stringify(list.slice(0, 15).map((r) => ({ id: r.id, name: r.name, region: r.region, style: r.style, serving: r.servingLabel, perServing: r.perServing })));
       },
     }),
-    betaZodTool({
+    tool({
       name: "get_training",
       description: "Workout history (last N days), personal records, active plan and the recovery-aware suggestion for the next session.",
       inputSchema: z.object({ days: z.number() }),
@@ -138,7 +145,30 @@ export async function deleteConversation(db: Db, userId: string, id: number) {
   await db.delete(s.aiConversations).where(and(eq(s.aiConversations.id, id), eq(s.aiConversations.userId, userId)));
 }
 
-/** Runs one coach turn with tool use; persists the user message, the answer and the tools used. */
+/** Executes one model-requested function call, validating its arguments first. */
+async function runCall(tools: CoachTool[], call: FunctionCall): Promise<Part> {
+  const t = tools.find((x) => x.name === call.name);
+  let response: Record<string, unknown>;
+  if (!t) response = { error: `Unknown tool ${call.name}` };
+  else {
+    const args = t.inputSchema.safeParse(call.args ?? {});
+    if (!args.success) response = { error: `Invalid arguments: ${args.error.issues.map((i) => i.message).join("; ")}` };
+    else {
+      try {
+        response = { result: JSON.parse(await t.run(args.data)) };
+      } catch (e) {
+        response = { error: e instanceof Error ? e.message : "Tool failed" };
+      }
+    }
+  }
+  return { functionResponse: { id: call.id, name: call.name, response } };
+}
+
+/**
+ * Runs one coach turn: a Gemini function-calling loop over the user's real data. The model's content
+ * (including thought signatures) is appended verbatim each round, as Gemini requires.
+ * Persists the user message, the answer and the tools used.
+ */
 export async function coachReply(db: Db, userId: string, input: { conversationId?: number | null; message: string }) {
   const [prefs] = await db.select().from(s.userPreferences).where(eq(s.userPreferences.userId, userId));
   const today = todayIn(prefs?.timezone);
@@ -149,33 +179,38 @@ export async function coachReply(db: Db, userId: string, input: { conversationId
     conversationId = conv!.id;
   }
   const history = await db.select().from(s.aiMessages).where(eq(s.aiMessages.conversationId, conversationId)).orderBy(asc(s.aiMessages.createdAt));
-  const messages: Anthropic.Beta.BetaMessageParam[] = history.slice(-20).map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
-  messages.push({ role: "user", content: `${input.message}\n\n(Today is ${today}.)` });
+  const contents: Content[] = history.slice(-20).map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] }));
+  contents.push({ role: "user", parts: [{ text: `${input.message}
+
+(Today is ${today}.)` }] });
   await db.insert(s.aiMessages).values({ conversationId, role: "user", content: input.message });
 
+  const tools = coachTools(db, userId, today);
+  const declarations = tools.map((t) => ({ name: t.name, description: t.description, parametersJsonSchema: toGeminiSchema(t.inputSchema) }));
   const toolCalls: { name: string; input: unknown }[] = [];
   let text = "";
   try {
-    const runner = getAnthropic().beta.messages.toolRunner({
-      model: AI_MODEL,
-      max_tokens: 8000,
-      betas: [FALLBACK_BETA],
-      fallbacks: "default",
-      system: SYSTEM,
-      output_config: { effort: "medium" },
-      max_iterations: 8,
-      tools: coachTools(db, userId, today),
-      messages,
-    });
-    for await (const message of runner) {
-      for (const block of message.content) if (block.type === "tool_use") toolCalls.push({ name: block.name, input: block.input });
+    for (let round = 0; round < 8; round++) {
+      const res = await getGenAI().models.generateContent({
+        model: AI_MODEL,
+        contents,
+        config: { systemInstruction: SYSTEM, tools: [{ functionDeclarations: declarations }], maxOutputTokens: 8000, thinkingConfig: { thinkingLevel: thinkingLevel("medium") } },
+      });
+      checkFinish(res);
+      const calls = res.functionCalls ?? [];
+      const modelContent = res.candidates?.[0]?.content;
+      if (!calls.length || !modelContent) {
+        text = (res.text ?? "").trim();
+        break;
+      }
+      contents.push(modelContent);
+      calls.forEach((c) => toolCalls.push({ name: c.name ?? "", input: c.args ?? {} }));
+      contents.push({ role: "user", parts: await Promise.all(calls.map((c) => runCall(tools, c))) });
     }
-    const final = await runner.done();
-    if (final.stop_reason === "refusal") text = "I can't help with that request. If it's about a health condition, please talk to a qualified professional.";
-    else text = final.content.filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === "text").map((b) => b.text).join("\n").trim();
     if (!text) text = "Sorry — I couldn't produce an answer. Please try rephrasing.";
   } catch (e) {
-    mapAiError(e);
+    if (e instanceof ApiError && e.status === 422) text = "I can't help with that request. If it's about a health condition, please talk to a qualified professional.";
+    else mapAiError(e);
   }
   const [saved] = await db.insert(s.aiMessages).values({ conversationId, role: "assistant", content: text, toolCalls }).returning();
   await db.update(s.aiConversations).set({ updatedAt: new Date() }).where(eq(s.aiConversations.id, conversationId));

@@ -1,5 +1,5 @@
 import { z } from "zod/v4";
-import { imageBlocks, structuredCall, type ImageInput } from "./client";
+import { imageParts, structuredCall, type ImageInput } from "./client";
 
 /* ------------------------------------------------------------------ */
 /* Meal photo recognition                                              */
@@ -51,7 +51,7 @@ export async function analyzeMealPhotos(images: ImageInput[], ctx: { mode: "quic
     system: MEAL_SYSTEM,
     schema: MealScanSchema,
     effort: ctx.mode === "detailed" ? "high" : "low",
-    content: [...imageBlocks(images), { type: "text", text: `Analyse this meal.${hints.length ? "\n" + hints.join("\n") : ""}` }],
+    parts: [...imageParts(images), { text: `Analyse this meal.${hints.length ? "\n" + hints.join("\n") : ""}` }],
   });
 }
 
@@ -110,7 +110,7 @@ export async function extractLabel(images: ImageInput[]) {
     system: LABEL_SYSTEM,
     schema: LabelSchema,
     effort: "medium",
-    content: [...imageBlocks(images), { type: "text", text: "Transcribe this product's nutrition label, ingredients and allergens." }],
+    parts: [...imageParts(images), { text: "Transcribe this product's nutrition label, ingredients and allergens." }],
   });
 }
 
@@ -141,6 +141,6 @@ export async function parseRecipeText(text: string) {
     system: `You convert a user's free-text description of a home-cooked Indian dish into a structured ingredient list with raw gram weights. Keep every ingredient the user mentions. Add commonly-used ingredients they omitted only if essential (e.g. salt, oil for tempering) and mark them quantity_was_given=false with an assumption. Do not compute calories.`,
     schema: RecipeParseSchema,
     effort: "low",
-    content: [{ type: "text", text }],
+    parts: [{ text }],
   });
 }

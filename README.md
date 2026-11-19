@@ -22,7 +22,7 @@ An AI-powered fitness, nutrition and body-transformation tracker built mobile-fi
 | Body transformation | ✅ | Weight trend (EWMA), plateau detection, time-to-target ranges, measurements, private photos, compare slider, milestones |
 | Insights, planner, grocery, pantry, reports | ✅ | Protein/fibre gaps, hidden calories, nutrition score, weekly budget, meal plans, grocery lists, PDF/CSV export |
 | Offline | ✅ | Viewed pages and data are cached; food, water, weight, steps and activity logs queue offline and sync later |
-| **AI meal photos, label OCR, recipe parsing, coach** | 🔑 Needs `ANTHROPIC_API_KEY` | Uses `claude-opus-5-5`. Without a key these features show a clear "not configured" state and everything else works |
+| **AI meal photos, label OCR, recipe parsing, coach** | 🔑 Needs `GEMINI_API_KEY` | Google Gemini, default `gemini-3.8-flash` (override with `GEMINI_MODEL`). Without a key these features show a clear "not configured" state and everything else works |
 | Barcode lookup | 🌐 Needs internet | Open Food Facts (ODbL) |
 | Push reminders | 🔑 Needs VAPID keys + a cron | See [Deployment](#deploy) |
 | Live Google Fit / Health Connect sync | ❌ Not possible in a web app | **File import** of Google Takeout / Health Connect exports is supported. Live sync needs the native Android wrapper (see [Native Android](#native-android)) |
@@ -33,7 +33,7 @@ Requirements: Node 20.11+ and about 300 MB of disk for the food data. Docker and
 
 ```bash
 npm install
-cp .env.example .env.local          # then set AUTH_SECRET (and ANTHROPIC_API_KEY for AI features)
+cp .env.example .env.local          # then set AUTH_SECRET (and GEMINI_API_KEY for AI features — free key at aistudio.google.com/apikey)
 npm run db:setup                    # migrations + USDA download/import (~1 min) + recipes/activities/exercises
 npm run icons                       # (already generated in public/icons; re-run if you change the logo)
 npm run dev                         # http://localhost:3000
@@ -67,7 +67,7 @@ src/
     activity/met.ts      MET calculations (gross/net), speed→MET from the Compendium, 1RM
     analytics/trends.ts  EWMA trend weight, regression, plateau detection, adaptive TDEE, predictions, streaks
     services/            Business logic (DB-backed, testable without Next)
-    ai/                  Claude client, vision/OCR/recipe schemas, tool-grounded coach
+    ai/                  Gemini client (structured JSON output), vision/OCR/recipe schemas, function-calling coach
     server/              Auth, API wrapper (CSRF, rate limits, error mapping), uploads
     client/              API hooks (SWR), offline queue (IndexedDB), image compression
 scripts/                 Ingestion (USDA, Compendium, CSV), seeding, migrations, icons, UI smoke test
@@ -75,7 +75,7 @@ drizzle/                 SQL migrations
 public/sw.js             Service worker (app-shell cache, offline API cache, background sync, push)
 ```
 
-**Stack:** Next.js 15 · React 19 · TypeScript (strict) · Tailwind CSS 4 · Radix primitives (shadcn-style components) · Lucide · Framer Motion · Recharts · Drizzle ORM · PostgreSQL / PGlite · Zod · Anthropic SDK · pdf-lib · web-push.
+**Stack:** Next.js 15 · React 19 · TypeScript (strict) · Tailwind CSS 4 · Radix primitives (shadcn-style components) · Lucide · Framer Motion · Recharts · Drizzle ORM · PostgreSQL / PGlite · Zod · Google Gen AI SDK (Gemini) · pdf-lib · web-push.
 
 **Auth:** first-party database sessions. Tokens are SHA-256 hashed at rest, sent in an httpOnly SameSite cookie, and slide to 90 days. Passwords use bcrypt (cost 12). This is used instead of Auth.js because Auth.js discourages its credentials provider. Native clients send `Authorization: Bearer <token>` (request with header `X-Client: native` at login).
 
@@ -122,11 +122,11 @@ The recommended setup is **Vercel + Neon Postgres + Cloudflare R2**. Any Postgre
 
 1. Create a Postgres database and set `DATABASE_URL`. Run `npm run db:setup` once against it from your machine.
 2. Create an R2/S3 bucket (private) and set `STORAGE_DRIVER=s3` plus `S3_*`.
-3. Set `AUTH_SECRET`, `APP_URL`, `ANTHROPIC_API_KEY` (optional), `CRON_SECRET`, and VAPID keys (`npx web-push generate-vapid-keys`) if you want push.
+3. Set `AUTH_SECRET`, `APP_URL`, `GEMINI_API_KEY` (optional), `CRON_SECRET`, and VAPID keys (`npx web-push generate-vapid-keys`) if you want push.
 4. Import the GitHub repo in Vercel and deploy. `vercel.json` schedules `/api/cron/reminders` every 15 minutes. Vercel Hobby limits cron frequency, so use daily reminders there or an external pinger.
 5. Open the HTTPS URL on your Android phone in Chrome and choose **⋮ → Install app**. FitTrack AI then appears in your app drawer, opens full-screen to the dashboard, and stays signed in.
 
-**Paid API note:** each AI call (meal photo, label, recipe parse, coach message) is billed by Anthropic. Scans use `effort: low` for quick scans and `high` for detailed ones. Per-user rate limits apply: 12 scans/min, 15 coach messages/min.
+**API usage note:** each AI call (meal photo, label, recipe parse, coach message) counts against your Gemini API quota (free tier, then paid). Quick scans use low thinking and detailed scans use high. Per-user rate limits apply: 12 scans/min, 15 coach messages/min.
 
 ## Security & privacy
 

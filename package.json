@@ -21,8 +21,8 @@
     "db:parse-compendium": "pdftotext -raw data/raw/compendium_2024.pdf data/raw/c_raw.txt && python -I scripts/parse-compendium.py data/raw/c_raw.txt data/activities/compendium-2024.json"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^1.10.0",
     "@electric-sql/pglite": "^0.3.8",
+    "@google/genai": "^3.6.1",
     "@radix-ui/react-dialog": "^1.3.1",
     "@radix-ui/react-slot": "^1.5.0",
     "@radix-ui/react-tabs": "^1.2.1",

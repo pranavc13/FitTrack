@@ -109,7 +109,7 @@ export default function CoachPage() {
         </div>
       </div>
 
-      {!enabled ? <Notice tone="warn">The AI coach isn&apos;t configured on this server (no ANTHROPIC_API_KEY). Everything else in the app works without it.</Notice> : null}
+      {!enabled ? <Notice tone="warn">The AI coach isn&apos;t configured on this server (no GEMINI_API_KEY). Everything else in the app works without it.</Notice> : null}
       {!online ? <Notice tone="warn">The coach needs an internet connection.</Notice> : null}
 
       <div className="flex-1 space-y-3 pb-4">
