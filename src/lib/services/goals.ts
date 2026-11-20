@@ -39,12 +39,16 @@ export async function createGoal(db: Db, userId: string, input: { type: GoalType
   const [waist] = await db.select().from(s.bodyMeasurements).where(eq(s.bodyMeasurements.userId, userId)).orderBy(desc(s.bodyMeasurements.date)).limit(1);
 
   if (input.targetWeightKg && weight && LOSS_GOALS.includes(input.type) && input.targetWeightKg >= weight) throw new ApiError(400, "For a loss goal, the target weight should be below your current weight");
+  if (input.targetWeightKg && weight && input.type === "muscle_gain" && input.targetWeightKg <= weight) throw new ApiError(400, "For a muscle-gain goal, the target weight should be above your current weight");
   if (input.targetWeightKg && profile.heightCm) {
     const targetBmi = input.targetWeightKg / (profile.heightCm / 100) ** 2;
     if (targetBmi < 18.5) throw new ApiError(400, `That target corresponds to a BMI of ${targetBmi.toFixed(1)}, which is underweight. Choose a higher target.`);
   }
 
-  await upsertProfile(db, userId, { primaryGoal: input.type, targetWeightKg: input.targetWeightKg ?? profile.targetWeightKg });
+  // Switching direction (e.g. fat loss → muscle gain) drops the old target weight rather than keep a contradictory one.
+  const prevTarget = profile.targetWeightKg;
+  const prevConflicts = weight != null && prevTarget != null && ((LOSS_GOALS.includes(input.type) && prevTarget >= weight) || (input.type === "muscle_gain" && prevTarget <= weight));
+  await upsertProfile(db, userId, { primaryGoal: input.type, targetWeightKg: input.targetWeightKg ?? (prevConflicts ? null : prevTarget) });
   const targets = await recalculateTargets(db, userId);
   const template = pickPlanTemplate(input.type, profile.trainingLocation, profile.workoutDaysPerWeek, profile.trainingExperience);
   const info = GOAL_INFO[input.type];

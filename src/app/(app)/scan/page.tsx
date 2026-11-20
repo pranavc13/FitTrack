@@ -60,9 +60,15 @@ export default function ScanPage() {
 function Scanner() {
   const params = useSearchParams();
   const [mode, setMode] = useState<Mode>((params.get("mode") as Mode) || "meal");
+  // Barcode → label hand-off, so a product that isn't in the database gets saved under its barcode.
+  const [prefill, setPrefill] = useState<LabelPrefill>(() => ({ manual: params.get("manual") === "1", name: params.get("name") ?? "" }));
   const me = useApi<{ today: string; aiEnabled: boolean }>("/auth/me");
   const { online } = useAppState();
   const meal = params.get("meal") ?? mealForHour();
+  const toLabel = (p: LabelPrefill) => {
+    setPrefill(p);
+    setMode("label");
+  };
 
   return (
     <div className="space-y-4">
@@ -83,7 +89,7 @@ function Scanner() {
         <Notice tone="warn"><WifiOff className="mr-1 inline h-3.5 w-3.5" /> You&apos;re offline. AI photo analysis needs internet — you can still search and log foods manually from the Food tab.</Notice>
       ) : null}
       {me.data ? (
-        mode === "meal" ? <MealScanner date={me.data.today} initialMeal={meal} aiEnabled={me.data.aiEnabled} /> : mode === "label" ? <LabelScanner date={me.data.today} aiEnabled={me.data.aiEnabled} /> : <BarcodeScanner date={me.data.today} onScanLabel={() => setMode("label")} />
+        mode === "meal" ? <MealScanner date={me.data.today} initialMeal={meal} aiEnabled={me.data.aiEnabled} /> : mode === "label" ? <LabelScanner key={JSON.stringify(prefill)} date={me.data.today} aiEnabled={me.data.aiEnabled} prefill={prefill} /> : <BarcodeScanner date={me.data.today} aiEnabled={me.data.aiEnabled} onScanLabel={toLabel} />
       ) : null}
     </div>
   );
@@ -369,14 +375,23 @@ const LABEL_FIELDS: [string, string, string][] = [
   ["sodiumMg", "Sodium", "mg"],
 ];
 
-function LabelScanner({ date, aiEnabled }: { date: string; aiEnabled: boolean }) {
+interface LabelPrefill {
+  manual?: boolean;
+  barcode?: string;
+  name?: string;
+  brand?: string;
+}
+
+const MANUAL_LABEL: LabelResult = { scanId: 0, isLabel: true, productName: null, brand: null, barcode: null, servingSizeG: null, servingLabel: null, isLiquid: false, per100: {}, basis: "per_100", ingredientsText: null, allergens: [], unreadableFields: [], readConfidence: 1, validation: [], indicators: { warnings: [], allergens: { declared: [], detectedInIngredients: [] }, note: "" } };
+
+function LabelScanner({ date, aiEnabled, prefill = {} }: { date: string; aiEnabled: boolean; prefill?: LabelPrefill }) {
   const toast = useToast();
   const [shots, setShots] = useState<Shot[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [label, setLabel] = useState<LabelResult | null>(null);
+  const [label, setLabel] = useState<LabelResult | null>(prefill.manual ? MANUAL_LABEL : null);
   const [vals, setVals] = useState<Record<string, string>>({});
-  const [meta, setMeta] = useState({ name: "", brand: "", barcode: "", servingSizeG: "", servingLabel: "", ingredients: "" });
+  const [meta, setMeta] = useState({ name: prefill.name ?? "", brand: prefill.brand ?? "", barcode: prefill.barcode ?? "", servingSizeG: "", servingLabel: "", ingredients: "" });
   const [confirmed, setConfirmed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<{ foodId: number; name: string } | null>(null);
@@ -391,7 +406,7 @@ function LabelScanner({ date, aiEnabled }: { date: string; aiEnabled: boolean })
       const r = await api.upload<LabelResult>("/scan/label", form);
       setLabel(r);
       setVals(Object.fromEntries(LABEL_FIELDS.map(([k]) => [k, r.per100[k] == null ? "" : String(r.per100[k])])));
-      setMeta({ name: r.productName ?? "", brand: r.brand ?? "", barcode: r.barcode ?? "", servingSizeG: r.servingSizeG ? String(r.servingSizeG) : "", servingLabel: r.servingLabel ?? "", ingredients: r.ingredientsText ?? "" });
+      setMeta({ name: r.productName || meta.name, brand: r.brand || meta.brand, barcode: r.barcode || meta.barcode, servingSizeG: r.servingSizeG ? String(r.servingSizeG) : "", servingLabel: r.servingLabel ?? "", ingredients: r.ingredientsText ?? "" });
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -400,7 +415,7 @@ function LabelScanner({ date, aiEnabled }: { date: string; aiEnabled: boolean })
   }
 
   function manual() {
-    setLabel({ scanId: 0, isLabel: true, productName: null, brand: null, barcode: null, servingSizeG: null, servingLabel: null, isLiquid: false, per100: {}, basis: "per_100", ingredientsText: null, allergens: [], unreadableFields: [], readConfidence: 1, validation: [], indicators: { warnings: [], allergens: { declared: [], detectedInIngredients: [] }, note: "" } });
+    setLabel(MANUAL_LABEL);
     setVals({});
   }
 
@@ -489,6 +504,7 @@ function LabelScanner({ date, aiEnabled }: { date: string; aiEnabled: boolean })
 
   return (
     <div className="space-y-4">
+      {meta.barcode ? <Notice>Saving for barcode {meta.barcode}{meta.name ? ` · ${meta.name}` : ""} — next time the barcode scan finds it instantly.</Notice> : null}
       <CameraCapture shots={shots} setShots={setShots} max={3} overlay="label" />
       <p className="text-sm text-muted">Photograph the nutrition table (and optionally the ingredient list and front of pack — up to 3 photos).</p>
       {error ? <Notice tone="warn">{error}</Notice> : null}
@@ -508,10 +524,13 @@ function LabelScanner({ date, aiEnabled }: { date: string; aiEnabled: boolean })
 
 interface BarcodeResult {
   found: boolean;
-  barcode?: string;
+  barcode?: string | null;
   message?: string;
   offline?: boolean;
   source?: string;
+  productName?: string | null;
+  brand?: string | null;
+  validation?: string[];
   product?: {
     foodId: number;
     name: string;
@@ -527,7 +546,7 @@ interface BarcodeResult {
   };
 }
 
-function BarcodeScanner({ date, onScanLabel }: { date: string; onScanLabel: () => void }) {
+function BarcodeScanner({ date, aiEnabled, onScanLabel }: { date: string; aiEnabled: boolean; onScanLabel: (p: LabelPrefill) => void }) {
   const [shots, setShots] = useState<Shot[]>([]);
   const [code, setCode] = useState("");
   const [result, setResult] = useState<BarcodeResult | null>(null);
@@ -535,25 +554,43 @@ function BarcodeScanner({ date, onScanLabel }: { date: string; onScanLabel: () =
   const [error, setError] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
 
-  const lookup = useCallback(async (value: string) => {
+  const run = useCallback(async (fn: () => Promise<BarcodeResult>) => {
     setLoading(true);
     setError(null);
-    setCode(value);
     try {
-      setResult(await api.get<BarcodeResult>(`/products/barcode/${value}`));
+      const r = await fn();
+      setResult(r);
+      if (r.barcode) setCode(r.barcode);
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setLoading(false);
+      setShots([]);
     }
   }, []);
+  const lookup = useCallback((value: string) => run(() => api.get<BarcodeResult>(`/products/barcode/${value}`)), [run]);
+
+  // A photo of the barcode (any browser): the AI reads the digits printed under the bars.
+  const onShots = (next: Shot[]) => {
+    setShots(next);
+    if (!next[0]) return;
+    if (!aiEnabled) {
+      setError("Reading a barcode photo needs AI. Type the number printed under the barcode instead.");
+      return;
+    }
+    const form = new FormData();
+    form.append("images", next[0].blob, "barcode.jpg");
+    run(() => api.upload<BarcodeResult>("/scan/barcode", form));
+  };
 
   const p = result?.product;
+  const prefill = { barcode: result?.barcode ?? (code || undefined), name: result?.productName ?? undefined, brand: result?.brand ?? undefined };
   return (
     <div className="space-y-4">
-      {!result ? <CameraCapture shots={shots} setShots={setShots} max={1} overlay="barcode" onBarcode={lookup} /> : null}
+      {!result ? <CameraCapture shots={shots} setShots={onShots} max={1} overlay="barcode" onBarcode={lookup} /> : null}
+      {loading ? <p className="flex items-center gap-2 text-sm text-muted"><Loader2 className="h-4 w-4 animate-spin" /> Looking up the product…</p> : null}
       <form onSubmit={(e) => { e.preventDefault(); if (/^\d{8,14}$/.test(code)) lookup(code); }} className="flex gap-2">
-        <Input inputMode="numeric" placeholder="Or type the barcode number" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} aria-label="Barcode number" />
+        <Input inputMode="numeric" placeholder="Or type the number under the barcode" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} aria-label="Barcode number" />
         <Button type="submit" loading={loading} disabled={!/^\d{8,14}$/.test(code)}>Look up</Button>
       </form>
       {error ? <Notice tone="warn">{error}</Notice> : null}
@@ -561,9 +598,10 @@ function BarcodeScanner({ date, onScanLabel }: { date: string; onScanLabel: () =
         <Card className="space-y-3">
           <p className="text-sm">{result.message}</p>
           <div className="grid grid-cols-2 gap-2">
-            <Button variant="secondary" onClick={() => setResult(null)}>Scan again</Button>
-            <Button onClick={onScanLabel}><Tag className="h-4 w-4" /> Scan label</Button>
+            <Button variant="secondary" onClick={() => onScanLabel({ ...prefill, manual: true })}>Enter manually</Button>
+            <Button onClick={() => onScanLabel(prefill)}><Tag className="h-4 w-4" /> Scan label</Button>
           </div>
+          <button onClick={() => setResult(null)} className="w-full text-center text-sm text-muted underline-offset-2 hover:underline">Try another barcode</button>
         </Card>
       ) : null}
       {p ? (
@@ -588,6 +626,7 @@ function BarcodeScanner({ date, onScanLabel }: { date: string; onScanLabel: () =
           {p.indicators.warnings.map((w) => (
             <p key={w.key} className={cn("flex items-center gap-2 text-sm", w.level === "high" ? "text-orange" : "text-muted")}><AlertTriangle className="h-4 w-4" /> {w.text}</p>
           ))}
+          {result?.validation?.map((v) => <p key={v} className="text-xs text-muted">{v}</p>)}
           {p.allergens.length ? <p className="text-sm"><span className="font-semibold">Allergens:</span> {p.allergens.join(", ")}</p> : null}
           {result?.source === "openfoodfacts" ? <p className="text-[11px] text-faint">Data from Open Food Facts contributors (ODbL). Check the pack if values look off.</p> : null}
           <div className="grid grid-cols-2 gap-2">

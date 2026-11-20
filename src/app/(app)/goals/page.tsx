@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckCircle2, Circle, Dumbbell, Footprints, HeartPulse, Moon, Target, TrendingDown, Utensils } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Badge, Button, Card, CardHeader, Chip, Field, Notice, NumberInput, Skeleton } from "@/components/ui/primitives";
 import { Sheet } from "@/components/ui/sheet";
 import { useToast } from "@/components/ui/toast";
@@ -159,6 +159,10 @@ function GoalSheet({ open, onOpenChange, info, current, onSaved }: { open: boole
   const [target, setTarget] = useState("");
   const [waist, setWaist] = useState("");
   const [saving, setSaving] = useState(false);
+  // The goal loads after mount, so sync the selection each time the sheet opens.
+  useEffect(() => {
+    if (open) setType(current ?? "fat_loss");
+  }, [open, current]);
   async function save() {
     setSaving(true);
     try {

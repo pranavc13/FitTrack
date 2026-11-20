@@ -1,6 +1,7 @@
 "use client";
 
-import { ArrowLeft, Heart, Plus, Search, Star } from "lucide-react";
+import { ArrowLeft, Heart, PencilLine, Plus, Search, Star } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Sheet } from "@/components/ui/sheet";
 import { Badge, Button, Chip, EmptyState, NumberInput, Select, Spinner } from "@/components/ui/primitives";
@@ -128,6 +129,9 @@ export function AddFoodSheet({ open, onOpenChange, date, defaultMeal, preselecte
           ) : (
             <EmptyState title={tab === "recent" ? "No recent foods yet" : "No favourites yet"} body="Search above — results include Indian dishes calculated from their ingredients, USDA foods and your own foods." />
           )}
+          <Link href={`/scan?mode=label&manual=1${dq ? `&name=${encodeURIComponent(dq)}` : ""}`} onClick={() => onOpenChange(false)} className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-line px-4 py-3 text-sm text-muted hover:text-ink">
+            <PencilLine className="h-4 w-4" /> Can&apos;t find it? Add your own food with its calories &amp; macros
+          </Link>
         </div>
       )}
     </Sheet>

@@ -15,7 +15,8 @@ type BarcodeDetectorCtor = new (opts: { formats: string[] }) => { detect: (src: 
 
 /**
  * Rear-camera viewfinder with capture, multi-shot (up to `max` angles) and gallery upload fallback.
- * When `onBarcode` is set it continuously scans frames with the browser BarcodeDetector API.
+ * When `onBarcode` is set it continuously scans frames with the browser BarcodeDetector API where available
+ * (Android Chrome); elsewhere the caller reads the captured photo instead.
  */
 export function CameraCapture({
   shots,
@@ -144,7 +145,7 @@ export function CameraCapture({
               <div className="aspect-square w-4/5 rounded-full border-2 border-lime/70 shadow-[0_0_0_9999px_rgba(0,0,0,0.25)]" />
             )}
             <p className="absolute bottom-4 rounded-full bg-black/60 px-3 py-1 text-xs text-white">
-              {overlay === "barcode" ? (supportsBarcode ? "Point at the barcode" : "Live barcode reading isn't supported on this browser — type the number below") : overlay === "label" ? "Fit the nutrition table inside the frame" : shots.length ? `Photo ${shots.length + 1} of ${max}: try another angle` : "Fit the whole plate in the circle, shoot from ~45°"}
+              {overlay === "barcode" ? (supportsBarcode ? "Point at the barcode — or tap the shutter" : "Fill the box with the barcode and tap the shutter") : overlay === "label" ? "Fit the nutrition table inside the frame" : shots.length ? `Photo ${shots.length + 1} of ${max}: try another angle` : "Fit the whole plate in the circle, shoot from ~45°"}
             </p>
           </div>
         ) : (
@@ -184,7 +185,7 @@ export function CameraCapture({
         </div>
       ) : null}
 
-      {overlay !== "barcode" ? (
+      {overlay !== "barcode" || shots.length < max ? (
         <div className="flex items-center justify-between gap-3">
           <button onClick={() => fileRef.current?.click()} className="grid h-12 w-12 place-items-center rounded-2xl bg-surface-2 text-muted" aria-label="Upload from gallery">
             <ImagePlus className="h-6 w-6" />
