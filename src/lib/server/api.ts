@@ -28,7 +28,7 @@ const MUTATING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
  * CSRF protection for cookie-authenticated mutations: the Origin (or Referer) must match the host.
  * Bearer-token requests (native clients) are exempt because browsers never attach them implicitly.
  */
-function checkOrigin(req: NextRequest) {
+export function checkOrigin(req: NextRequest) {
   if (!MUTATING.has(req.method) || req.headers.get("authorization")?.startsWith("Bearer ")) return;
   const origin = req.headers.get("origin") ?? req.headers.get("referer");
   if (!origin) throw new ApiError(403, "Missing origin");

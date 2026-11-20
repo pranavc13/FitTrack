@@ -30,7 +30,8 @@ async function request<T>(method: string, path: string, body?: unknown, init?: R
   } catch {
     throw new ApiClientError(0, "You're offline or the server can't be reached.");
   }
-  if (res.status === 401 && typeof window !== "undefined" && !location.pathname.startsWith("/login")) {
+  // Admin endpoints have their own sign-in, so their 401s stay on the admin page.
+  if (res.status === 401 && typeof window !== "undefined" && !location.pathname.startsWith("/login") && !path.startsWith("/admin")) {
     location.href = `/login?next=${encodeURIComponent(location.pathname)}`;
   }
   const type = res.headers.get("content-type") ?? "";
