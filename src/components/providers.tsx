@@ -57,6 +57,18 @@ function AppStateProvider({ children }: { children: ReactNode }) {
       setInstallPrompt(e as BeforeInstallPromptEvent);
     };
     window.addEventListener("beforeinstallprompt", onPrompt);
+
+    // Code files from an older build (app updated / dev server recompiled while the tab was open): reload once.
+    const onChunkError = (e: ErrorEvent | PromiseRejectionEvent) => {
+      const err = "reason" in e ? e.reason : e.error;
+      if (!/ChunkLoadError|Loading chunk|dynamically imported module/i.test(`${err?.name} ${err?.message ?? e}`)) return;
+      if (sessionStorage.getItem("ft-reloaded")) return;
+      sessionStorage.setItem("ft-reloaded", "1");
+      location.reload();
+    };
+    window.addEventListener("error", onChunkError);
+    window.addEventListener("unhandledrejection", onChunkError);
+    const clearReloadFlag = setTimeout(() => sessionStorage.removeItem("ft-reloaded"), 10_000);
     window.addEventListener("appinstalled", () => setInstallPrompt(null));
 
     if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") {
@@ -64,6 +76,10 @@ function AppStateProvider({ children }: { children: ReactNode }) {
       navigator.serviceWorker.addEventListener("message", (e) => {
         if (e.data?.type === "flush-queue") sync();
       });
+    } else if ("serviceWorker" in navigator) {
+      // A worker left over from a production run would serve stale dev chunks and crash the app.
+      navigator.serviceWorker.getRegistrations().then((regs) => regs.forEach((r) => r.unregister())).catch(() => {});
+      if ("caches" in window) caches.keys().then((keys) => keys.forEach((k) => caches.delete(k))).catch(() => {});
     }
     if (navigator.onLine) sync();
     const interval = setInterval(() => navigator.onLine && sync(), 60_000);
@@ -73,6 +89,9 @@ function AppStateProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("online", goOnline);
       window.removeEventListener("offline", goOffline);
       window.removeEventListener("beforeinstallprompt", onPrompt);
+      window.removeEventListener("error", onChunkError);
+      window.removeEventListener("unhandledrejection", onChunkError);
+      clearTimeout(clearReloadFlag);
     };
   }, [toast]);
 

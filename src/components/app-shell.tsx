@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3, CloudOff, Dumbbell, Home, LineChart, RefreshCw, ScanLine, Sparkles, Target, User, UtensilsCrossed, Droplets } from "lucide-react";
+import { BarChart3, CloudOff, Dumbbell, HeartPulse, Home, LineChart, RefreshCw, ScanLine, Sparkles, Target, User, UtensilsCrossed, Droplets } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
@@ -15,6 +15,7 @@ const NAV = [
   { href: "/progress", label: "Progress", icon: LineChart },
 ];
 const SIDEBAR_EXTRA = [
+  { href: "/fit-journal", label: "Google Fit journal", icon: HeartPulse },
   { href: "/coach", label: "AI Coach", icon: Sparkles },
   { href: "/wellness", label: "Water & sleep", icon: Droplets },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
@@ -68,6 +69,9 @@ export function AppShell({ children, userName }: { children: ReactNode; userName
             <div className="hidden lg:block" />
             <div className="flex items-center gap-2">
               <SyncPill />
+              <Link href="/fit-journal" className="grid h-10 w-10 place-items-center rounded-full bg-surface-2 text-red lg:hidden" aria-label="Google Fit journal">
+                <HeartPulse className="h-5 w-5" />
+              </Link>
               <Link href="/wellness" className="grid h-10 w-10 place-items-center rounded-full bg-surface-2 text-cyan lg:hidden" aria-label="Water and sleep">
                 <Droplets className="h-5 w-5" />
               </Link>

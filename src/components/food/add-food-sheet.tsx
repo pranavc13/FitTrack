@@ -15,6 +15,9 @@ export interface FoodHit {
   brand?: string | null;
   kcal: number | null;
   proteinG: number | null;
+  carbsG?: number | null;
+  fatG?: number | null;
+  fibreG?: number | null;
   dataQuality?: string;
   matchedSynonym?: string | null;
   defaultServing?: { label: string; grams: number } | null;

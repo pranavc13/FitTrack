@@ -158,14 +158,14 @@ export function Onboarding({ name }: { name: string }) {
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Height">
-                <NumberInput suffix="cm" value={s.heightCm} onChange={(e) => upd("heightCm", e.target.value)} placeholder="170" />
+                <NumberInput suffix="cm" value={s.heightCm} onChange={(e) => upd("heightCm", e.target.value)} placeholder="Your height" />
               </Field>
               <Field label="Current weight">
-                <NumberInput suffix="kg" value={s.currentWeightKg} onChange={(e) => upd("currentWeightKg", e.target.value)} placeholder="72" />
+                <NumberInput suffix="kg" value={s.currentWeightKg} onChange={(e) => upd("currentWeightKg", e.target.value)} placeholder="Your weight" />
               </Field>
             </div>
             <Field label="Target weight (optional)">
-              <NumberInput suffix="kg" value={s.targetWeightKg} onChange={(e) => upd("targetWeightKg", e.target.value)} placeholder="65" />
+              <NumberInput suffix="kg" value={s.targetWeightKg} onChange={(e) => upd("targetWeightKg", e.target.value)} placeholder="Goal weight" />
             </Field>
           </>
         )}

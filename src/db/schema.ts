@@ -94,10 +94,14 @@ const timestamps = {
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   email: text("email").notNull(),
-  passwordHash: text("password_hash").notNull(),
+  /** Null for accounts that only sign in with Google. */
+  passwordHash: text("password_hash"),
   name: text("name").notNull(),
+  /** Google account id (`sub` claim) once the user has signed in with Google. */
+  googleSub: text("google_sub"),
+  avatarUrl: text("avatar_url"),
   ...timestamps,
-}, (t) => [uniqueIndex("users_email_idx").on(sql`lower(${t.email})`)]);
+}, (t) => [uniqueIndex("users_email_idx").on(sql`lower(${t.email})`), uniqueIndex("users_google_sub_idx").on(t.googleSub)]);
 
 export const sessions = pgTable("sessions", {
   /** SHA-256 of the session token; the raw token only ever lives in the cookie. */
@@ -541,6 +545,28 @@ export const stepLogs = pgTable("step_logs", {
   activeMinutes: integer("active_minutes"),
   source: recordSourceEnum("source").default("manual").notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [primaryKey({ columns: [t.userId, t.date] })]);
+
+/**
+ * Daily journal of numbers copied from Google Fit (or any tracker). `caloriesBurned` is the tracker's
+ * total for the day so far, which already includes resting energy (BMR) — it is not exercise-only.
+ */
+export const fitJournal = pgTable("fit_journal", {
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  date: date("date").notNull(),
+  steps: integer("steps"),
+  heartPoints: integer("heart_points"),
+  moveMinutes: integer("move_minutes"),
+  distanceKm: real("distance_km"),
+  caloriesBurned: integer("calories_burned"),
+  avgHeartRate: smallint("avg_heart_rate"),
+  /** Goal the day was judged against (defaults to the profile goal). */
+  goal: goalTypeEnum("goal").notNull(),
+  /** When the tracker numbers were read; used to project the rest of the day's resting burn. */
+  recordedAt: timestamp("recorded_at", { withTimezone: true }).notNull(),
+  isFullDay: boolean("is_full_day").default(false).notNull(),
+  notes: text("notes"),
+  ...timestamps,
 }, (t) => [primaryKey({ columns: [t.userId, t.date] })]);
 
 export const exercises = pgTable("exercises", {

@@ -15,10 +15,21 @@ import { cn, fmt, mealForHour, MEAL_LABEL } from "@/lib/utils";
 
 type Mode = "meal" | "label" | "barcode";
 
+interface Macros100 {
+  kcal100: number | null;
+  protein100: number | null;
+  carbs100?: number | null;
+  fat100?: number | null;
+  fibre100?: number | null;
+}
 interface ScanItem {
   id: number;
   detectedName: string;
   cookingStyle: string;
+  count?: number;
+  householdMeasure?: string;
+  container?: string;
+  pieceGrams?: number | null;
   estimatedGrams: number;
   gramsLow: number;
   gramsHigh: number;
@@ -26,8 +37,8 @@ interface ScanItem {
   quantityConfidence: number;
   nutritionConfidence: number;
   reasoning: string;
-  match: { id: number; name: string; kcal100: number | null; protein100: number | null; dataQuality: string; source: string | null } | null;
-  alternatives: { id: number; name: string; kcal100: number | null }[];
+  match: (Macros100 & { id: number; name: string; dataQuality: string; source: string | null }) | null;
+  alternatives: (Macros100 & { id: number; name: string })[];
 }
 interface MealScanResult {
   scanId: number;
@@ -93,9 +104,11 @@ function ConfidenceRow({ label, value }: { label: string; value: number }) {
   );
 }
 
+const pickMacros = (m: Macros100 & { id: number; name: string }) => ({ id: m.id, name: m.name, kcal100: m.kcal100, protein100: m.protein100, carbs100: m.carbs100 ?? null, fat100: m.fat100 ?? null, fibre100: m.fibre100 ?? null });
+
 interface EditableItem extends ScanItem {
   grams: number;
-  food: { id: number; name: string; kcal100: number | null; protein100: number | null } | null;
+  food: (Macros100 & { id: number; name: string }) | null;
   removed?: boolean;
 }
 
@@ -103,7 +116,8 @@ function MealScanner({ date, initialMeal, aiEnabled }: { date: string; initialMe
   const router = useRouter();
   const toast = useToast();
   const [shots, setShots] = useState<Shot[]>([]);
-  const [detailed, setDetailed] = useState(false);
+  // Detailed by default: portion accuracy matters more than a few seconds of speed.
+  const [detailed, setDetailed] = useState(true);
   const [plate, setPlate] = useState("");
   const [reference, setReference] = useState("");
   const [note, setNote] = useState("");
@@ -128,7 +142,7 @@ function MealScanner({ date, initialMeal, aiEnabled }: { date: string; initialMe
       if (note) form.set("note", note);
       const r = await api.upload<MealScanResult>("/scan/meal", form);
       setResult(r);
-      setItems(r.items.map((it) => ({ ...it, grams: it.estimatedGrams, food: it.match ? { id: it.match.id, name: it.match.name, kcal100: it.match.kcal100, protein100: it.match.protein100 } : null })));
+      setItems(r.items.map((it) => ({ ...it, grams: it.estimatedGrams, food: it.match ? pickMacros(it.match) : null })));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -137,7 +151,8 @@ function MealScanner({ date, initialMeal, aiEnabled }: { date: string; initialMe
   }
 
   const active = items.filter((i) => !i.removed);
-  const total = active.reduce((a, i) => ({ kcal: a.kcal + ((i.food?.kcal100 ?? 0) * i.grams) / 100, protein: a.protein + ((i.food?.protein100 ?? 0) * i.grams) / 100 }), { kcal: 0, protein: 0 });
+  const part = (i: EditableItem, k: keyof Macros100) => ((i.food?.[k] ?? 0) * i.grams) / 100;
+  const total = active.reduce((a, i) => ({ kcal: a.kcal + part(i, "kcal100"), protein: a.protein + part(i, "protein100"), carbs: a.carbs + part(i, "carbs100"), fat: a.fat + part(i, "fat100"), fibre: a.fibre + part(i, "fibre100") }), { kcal: 0, protein: 0, carbs: 0, fat: 0, fibre: 0 });
 
   async function logMeal() {
     const valid = active.filter((i) => i.food && i.grams > 0);
@@ -178,6 +193,7 @@ function MealScanner({ date, initialMeal, aiEnabled }: { date: string; initialMe
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="font-semibold capitalize">{it.detectedName}</p>
+                    {it.householdMeasure ? <p className="text-sm font-medium text-lime">≈ {it.householdMeasure} · {it.estimatedGrams} g</p> : null}
                     <p className="truncate text-xs text-muted">{it.food ? `Matched: ${it.food.name}` : "No database match — choose a food"}{it.cookingStyle && it.cookingStyle !== "unknown" ? ` · ${it.cookingStyle}` : ""}</p>
                   </div>
                   <button onClick={() => setItems(items.map((x, i) => (i === idx ? { ...x, removed: true } : x)))} className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-surface-2 text-muted hover:text-red" aria-label={`Remove ${it.detectedName}`}>
@@ -190,10 +206,17 @@ function MealScanner({ date, initialMeal, aiEnabled }: { date: string; initialMe
                   </Field>
                   <div className="pb-6 text-right">
                     <p className="font-display text-xl font-bold tabular">{it.food ? fmt.int(((it.food.kcal100 ?? 0) * it.grams) / 100) : "—"}</p>
-                    <p className="text-[11px] text-muted">kcal · {it.food ? fmt.dec(((it.food.protein100 ?? 0) * it.grams) / 100) : "—"} g P</p>
+                    <p className="text-[11px] text-muted">kcal · {it.food ? fmt.dec(part(it, "protein100")) : "—"} g P</p>
+                    {it.food?.carbs100 != null ? <p className="text-[11px] text-faint">C {fmt.dec(part(it, "carbs100"))} · F {fmt.dec(part(it, "fat100"))} · Fib {fmt.dec(part(it, "fibre100"))}</p> : null}
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
+                  {it.pieceGrams ? (
+                    <>
+                      <Chip onClick={() => setItems(items.map((x, i) => (i === idx ? { ...x, grams: Math.max(it.pieceGrams!, x.grams - it.pieceGrams!) } : x)))}>− 1 piece</Chip>
+                      <Chip onClick={() => setItems(items.map((x, i) => (i === idx ? { ...x, grams: x.grams + it.pieceGrams! } : x)))}>+ 1 piece (~{it.pieceGrams} g)</Chip>
+                    </>
+                  ) : null}
                   {[0.75, 1.25, 1.5].map((f) => (
                     <Chip key={f} onClick={() => setItems(items.map((x, i) => (i === idx ? { ...x, grams: Math.round(x.grams * f) } : x)))}>{f < 1 ? "Less" : f === 1.25 ? "More" : "Much more"}</Chip>
                   ))}
@@ -202,7 +225,7 @@ function MealScanner({ date, initialMeal, aiEnabled }: { date: string; initialMe
                 {it.alternatives.length ? (
                   <div className="no-scrollbar flex gap-1.5 overflow-x-auto">
                     {it.alternatives.map((a) => (
-                      <button key={a.id} onClick={() => setItems(items.map((x, i) => (i === idx ? { ...x, food: { id: a.id, name: a.name, kcal100: a.kcal100, protein100: null } } : x)))} className={cn("shrink-0 rounded-full border px-3 py-1 text-xs", it.food?.id === a.id ? "border-lime text-lime" : "border-line text-muted")}>
+                      <button key={a.id} onClick={() => setItems(items.map((x, i) => (i === idx ? { ...x, food: pickMacros(a) } : x)))} className={cn("shrink-0 rounded-full border px-3 py-1 text-xs", it.food?.id === a.id ? "border-lime text-lime" : "border-line text-muted")}>
                         {a.name.length > 32 ? a.name.slice(0, 30) + "…" : a.name}
                       </button>
                     ))}
@@ -212,6 +235,7 @@ function MealScanner({ date, initialMeal, aiEnabled }: { date: string; initialMe
                   <ConfidenceRow label="Recognition" value={it.recognitionConfidence} />
                   <ConfidenceRow label="Quantity" value={it.quantityConfidence} />
                   <ConfidenceRow label="Nutrition data" value={it.nutritionConfidence} />
+                  {it.container ? <p className="pt-1 text-[11px] text-faint">Scale: {it.container}</p> : null}
                   {it.reasoning ? <p className="pt-1 text-[11px] text-faint">{it.reasoning}</p> : null}
                 </div>
               </Card>
@@ -237,7 +261,7 @@ function MealScanner({ date, initialMeal, aiEnabled }: { date: string; initialMe
           <div className="flex items-center justify-between">
             <div>
               <p className="font-display text-2xl font-bold tabular">{fmt.int(total.kcal)} kcal</p>
-              <p className="text-xs text-muted">{fmt.dec(total.protein)} g protein · {active.length} items</p>
+              <p className="text-xs text-muted">P {fmt.dec(total.protein)} g · C {fmt.dec(total.carbs)} g · F {fmt.dec(total.fat)} g · Fibre {fmt.dec(total.fibre)} g · {active.length} items</p>
             </div>
             <Select value={meal} onChange={(e) => setMeal(e.target.value)} className="w-40" aria-label="Meal">
               {Object.entries(MEAL_LABEL).filter(([k]) => k !== "custom").map(([k, l]) => <option key={k} value={k}>{l}</option>)}
@@ -257,7 +281,7 @@ function MealScanner({ date, initialMeal, aiEnabled }: { date: string; initialMe
           initialQuery={picker?.query ?? ""}
           title={picker?.index == null ? "Add missing item" : "Replace food"}
           onPick={(f: FoodHit) => {
-            const food = { id: f.id, name: f.name, kcal100: f.kcal, protein100: f.proteinG };
+            const food = { id: f.id, name: f.name, kcal100: f.kcal, protein100: f.proteinG, carbs100: f.carbsG ?? null, fat100: f.fatG ?? null, fibre100: f.fibreG ?? null };
             if (picker?.index == null) {
               setItems([...items, { id: -Date.now(), detectedName: f.name, cookingStyle: "", estimatedGrams: f.defaultServing?.grams ?? 100, gramsLow: 0, gramsHigh: 0, recognitionConfidence: 1, quantityConfidence: 0.6, nutritionConfidence: 0.9, reasoning: "Added manually", match: null, alternatives: [], grams: f.defaultServing?.grams ?? 100, food }]);
             } else setItems(items.map((x, i) => (i === picker.index ? { ...x, food, nutritionConfidence: 0.9 } : x)));

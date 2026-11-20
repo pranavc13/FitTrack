@@ -19,6 +19,7 @@ export async function POST(req: NextRequest) {
     const [user] = await db.select().from(s.users).where(sql`lower(${s.users.email}) = ${input.email.toLowerCase()}`);
     // Constant-ish work whether or not the user exists.
     const ok = await verifyPassword(input.password, user?.passwordHash ?? (await dummyHash()));
+    if (user && !user.passwordHash) throw new ApiError(401, "This account signs in with Google — use “Continue with Google”");
     if (!user || !ok) throw new ApiError(401, "Incorrect email or password");
     const { token, expiresAt } = await createSession(user.id, req.headers.get("user-agent"));
     await setSessionCookie(token, expiresAt);

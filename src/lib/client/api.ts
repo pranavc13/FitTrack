@@ -2,6 +2,7 @@
 
 import useSWR, { mutate as globalMutate, type SWRConfiguration } from "swr";
 import { enqueue } from "./offline";
+import { uuid } from "@/lib/utils";
 
 export class ApiClientError extends Error {
   constructor(
@@ -64,7 +65,7 @@ export type SyncState = "saved" | "queued";
  * server dedupes replays. When the network fails the request is queued and synced later.
  */
 export async function offlineCapable<T>(method: "POST" | "PUT", path: string, payload: Record<string, unknown>, label: string): Promise<{ state: SyncState; data?: T }> {
-  const body = { clientId: payload.clientId ?? crypto.randomUUID(), ...payload };
+  const body = { clientId: payload.clientId ?? uuid(), ...payload };
   try {
     const data = await request<T>(method, path, body);
     return { state: "saved", data };

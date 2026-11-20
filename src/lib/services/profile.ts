@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import * as s from "@/db/schema";
 import { ageFromDob, calculateTargets, type ActivityLevel, type GoalType, type Sex } from "@/lib/nutrition/targets";
@@ -8,7 +8,7 @@ export type ProfileInput = Partial<Omit<typeof s.userProfiles.$inferInsert, "use
 
 export async function getProfileBundle(db: Db, userId: string) {
   const [[user], [profile], [prefs], [targets]] = await Promise.all([
-    db.select({ id: s.users.id, email: s.users.email, name: s.users.name, createdAt: s.users.createdAt }).from(s.users).where(eq(s.users.id, userId)),
+    db.select({ id: s.users.id, email: s.users.email, name: s.users.name, avatarUrl: s.users.avatarUrl, hasPassword: sql<boolean>`${s.users.passwordHash} is not null`, googleLinked: sql<boolean>`${s.users.googleSub} is not null`, createdAt: s.users.createdAt }).from(s.users).where(eq(s.users.id, userId)),
     db.select().from(s.userProfiles).where(eq(s.userProfiles.userId, userId)),
     db.select().from(s.userPreferences).where(eq(s.userPreferences.userId, userId)),
     db.select().from(s.nutritionTargets).where(eq(s.nutritionTargets.userId, userId)),

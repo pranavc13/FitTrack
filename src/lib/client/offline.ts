@@ -1,5 +1,7 @@
 "use client";
 
+import { uuid } from "@/lib/utils";
+
 /**
  * Offline mutation queue in IndexedDB. Writes made without connectivity are stored here and replayed
  * when the browser comes back online (and via Background Sync where supported). Every queued body has
@@ -47,7 +49,7 @@ export function onQueueChange(fn: () => void) {
 }
 
 export async function enqueue(item: Omit<QueuedRequest, "id" | "createdAt" | "attempts">) {
-  await tx("readwrite", (s) => s.put({ ...item, id: crypto.randomUUID(), createdAt: Date.now(), attempts: 0 }));
+  await tx("readwrite", (s) => s.put({ ...item, id: uuid(), createdAt: Date.now(), attempts: 0 }));
   notify();
   try {
     const reg = await navigator.serviceWorker?.ready;

@@ -92,7 +92,7 @@ export interface Targets {
   method: string;
 }
 
-const GOAL_ENERGY: Record<GoalType, { pct: number; capKcal: number; note: string }> = {
+export const GOAL_ENERGY: Record<GoalType, { pct: number; capKcal: number; note: string }> = {
   weight_loss: { pct: -0.2, capKcal: -750, note: "≈20% deficit (capped at 750 kcal) for ~0.5–0.75 kg/week" },
   fat_loss: { pct: -0.18, capKcal: -650, note: "≈18% deficit to preserve muscle while losing fat" },
   belly_fat_reduction: { pct: -0.18, capKcal: -650, note: "Belly fat reduces with overall fat loss (spot reduction isn't possible)" },
@@ -106,7 +106,7 @@ const GOAL_ENERGY: Record<GoalType, { pct: number; capKcal: number; note: string
 };
 
 /** Protein g per kg (reference weight). Evidence base: ISSN position stand (1.4–2.0 g/kg for active people; up to 2.2 in a deficit). */
-const PROTEIN_PER_KG: Record<GoalType, number> = {
+export const PROTEIN_PER_KG: Record<GoalType, number> = {
   weight_loss: 1.6,
   fat_loss: 1.8,
   belly_fat_reduction: 1.8,

@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/server/auth";
+import { googleConfigured } from "@/lib/server/google";
 import { AuthForm } from "../auth-form";
 
 export const metadata = { title: "Create account" };
@@ -10,7 +11,7 @@ export default async function SignupPage() {
   if (await getSessionUser()) redirect("/home");
   return (
     <Suspense>
-      <AuthForm mode="signup" />
+      <AuthForm mode="signup" googleEnabled={googleConfigured()} />
     </Suspense>
   );
 }

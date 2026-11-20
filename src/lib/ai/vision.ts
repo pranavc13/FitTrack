@@ -16,6 +16,8 @@ export const MealScanSchema = z.object({
       visible_ingredients: z.array(z.string()).describe("Ingredients you can actually see; empty if unsure"),
       cooking_style: z.string().describe("e.g. 'home-style', 'restaurant (oily/creamy)', 'deep-fried', 'steamed', 'unknown'"),
       count: z.number().describe("Number of pieces if countable (rotis, idlis, eggs), else 0"),
+      household_measure: z.string().describe("The portion in Indian household terms, e.g. '1 katori (~150 ml)', '2 medium phulkas', '1 cup', '3/4 dinner plate', '1 medium piece'"),
+      container: z.string().describe("What the food is served in and how full, e.g. 'steel katori ~8 cm, 3/4 full', 'flat on plate', 'glass ~250 ml, full'"),
       estimated_grams: z.number().describe("Best estimate of the edible portion weight in grams"),
       grams_low: z.number().describe("Plausible lower bound in grams"),
       grams_high: z.number().describe("Plausible upper bound in grams"),
@@ -33,8 +35,15 @@ const MEAL_SYSTEM = `You are a food-recognition assistant for an Indian fitness 
 Rules:
 - List each component separately (e.g. dal, rice, roti, sabzi, salad, raita, papad on a thali are separate items).
 - Use names common in India (Hindi/regional names in parentheses where helpful).
-- You cannot measure mass from a photo. Give a best estimate plus a realistic low/high range, and set quantity_confidence honestly (usually 0.3-0.7). Use the plate/bowl size, reference objects (credit card 8.56 cm, ₹10 coin 2.7 cm, hand, spoon), container depth and multiple angles if given.
-- Typical references: one phulka ~30-40 g, a katori holds ~150 ml, a full dinner plate of rice ~200-250 g cooked.
+- You cannot weigh food from a photo, so estimate methodically:
+  1. Establish scale: the plate/thali (standard dinner plate 25–27 cm, quarter plate 18–20 cm, steel thali 28–32 cm), a steel katori (7.5–9 cm across, holds ~150 ml when full), a spoon (~15 cm), a hand, a ₹10 coin (2.7 cm) or credit card (8.56 cm).
+  2. Estimate the volume the food occupies (container size × how full it is; heap height for rice/poha).
+  3. Convert with density: dal/curry/sabzi gravy ≈ 1 g/ml; cooked rice ≈ 0.75 g/ml loosely heaped (1 cup ≈ 160 g); raita/curd ≈ 1 g/ml; dry sabzi ≈ 0.6 g/ml.
+  4. For countable items use count × typical piece weight.
+- Typical piece weights: phulka 30–35 g, tawa roti 40–45 g, plain paratha 70–90 g, aloo paratha 110–140 g, puri 25–30 g, naan 90–120 g, idli 40–50 g, plain dosa 80–110 g, masala dosa 160–220 g, vada 40–50 g, samosa 60–90 g, boiled egg 50 g, gulab jamun 40–50 g, chicken leg piece ~120 g with bone (~80 g edible — estimate the edible part), paneer cube ~10–15 g.
+- Typical servings: 1 full katori dal/sabzi ≈ 150 g, a restaurant curry bowl ≈ 250–300 g, a full dinner plate of rice ≈ 200–250 g cooked, a glass of lassi/chaas ≈ 250 ml.
+- Give a best estimate plus a realistic low/high range, and set quantity_confidence honestly (usually 0.3–0.7; higher only with a clear scale reference or countable pieces).
+- Always fill household_measure so the user can sanity-check the grams, and container with the scale cue you used.
 - Do NOT estimate calories or nutrients — the app computes them from its database.
 - If something is ambiguous (paneer vs tofu, ghee vs oil, sugar in tea), say so in questions.
 - If the image shows no food, set is_food=false and return no items.`;

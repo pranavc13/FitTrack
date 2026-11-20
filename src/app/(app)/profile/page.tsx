@@ -10,7 +10,7 @@ import { useToast } from "@/components/ui/toast";
 import { api, invalidate, useApi } from "@/lib/client/api";
 
 interface Me {
-  user: { name: string; email: string };
+  user: { name: string; email: string; hasPassword: boolean; googleLinked: boolean };
   profile: { dateOfBirth: string | null; sex: string; heightCm: number | null; targetWeightKg: number | null; activityLevel: string; dietPreference: string; allergies: string[]; workoutDaysPerWeek: number; workoutMinutes: number; trainingLocation: string; trainingExperience: string; sleepHours: number | null } | null;
   preferences: { timezone: string; stepGoal: number; waterGlassMl: number } | null;
   targets: { calories: number; proteinG: number; carbsG: number; fatG: number; fibreG: number; waterMl: number; sleepMinutes: number; isCustom: boolean; computed: { bmr: number; tdee: number; baseline: number; bmi: number; rationale: string[]; recommended: Record<string, number> } } | null;
@@ -91,7 +91,7 @@ export default function ProfilePage() {
 
       <TargetsSheet open={editTargets} onOpenChange={setEditTargets} me={data} onSaved={() => { mutate(); invalidate("/dashboard"); }} toast={toast} />
       <ProfileSheet open={editProfile} onOpenChange={setEditProfile} me={data} onSaved={() => { mutate(); invalidate("/dashboard"); }} toast={toast} />
-      <DeleteSheet open={deleteOpen} onOpenChange={setDeleteOpen} />
+      <DeleteSheet open={deleteOpen} onOpenChange={setDeleteOpen} email={data?.user.email ?? ""} hasPassword={data?.user.hasPassword ?? true} />
     </div>
   );
 }
@@ -258,7 +258,7 @@ function Reminders({ pushEnabled }: { pushEnabled: boolean }) {
   );
 }
 
-function DeleteSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+function DeleteSheet({ open, onOpenChange, email, hasPassword }: { open: boolean; onOpenChange: (o: boolean) => void; email: string; hasPassword: boolean }) {
   const toast = useToast();
   const router = useRouter();
   const [pw, setPw] = useState("");
@@ -266,11 +266,15 @@ function DeleteSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (o: 
   return (
     <Sheet open={open} onOpenChange={onOpenChange} title="Delete account" description="This permanently deletes your account, logs, recipes, photos and AI conversations. It cannot be undone.">
       <div className="space-y-3">
-        <Field label="Confirm with your password"><Input type="password" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="current-password" /></Field>
+        {hasPassword ? (
+          <Field label="Confirm with your password"><Input type="password" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="current-password" /></Field>
+        ) : (
+          <Field label={`Type ${email} to confirm`}><Input type="email" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="off" /></Field>
+        )}
         <Button variant="danger" className="w-full" loading={busy} disabled={!pw} onClick={async () => {
           setBusy(true);
           try {
-            await api.del("/account", { password: pw });
+            await api.del("/account", hasPassword ? { password: pw } : { confirmEmail: pw });
             router.replace("/signup");
           } catch (e) {
             toast((e as Error).message, "error");

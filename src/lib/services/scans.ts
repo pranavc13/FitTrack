@@ -63,6 +63,9 @@ export async function scanMeal(
         detectedName: it.name,
         cookingStyle: it.cooking_style,
         count: it.count,
+        householdMeasure: it.household_measure,
+        container: it.container,
+        pieceGrams: it.count > 0 ? Math.round(grams / it.count) : null,
         visibleIngredients: it.visible_ingredients,
         estimatedGrams: grams,
         gramsLow: Math.round(it.grams_low),
@@ -71,8 +74,8 @@ export async function scanMeal(
         quantityConfidence: clamp01(it.quantity_confidence),
         nutritionConfidence: nConf,
         reasoning: it.reasoning,
-        match: match ? { id: match.id, name: match.name, kcal100: match.kcal, protein100: match.proteinG, dataQuality: match.dataQuality, source: match.source } : null,
-        alternatives: ranked.slice(1, 5).map((c) => ({ id: c.id, name: c.name, kcal100: c.kcal })),
+        match: match ? { ...macros100(match), id: match.id, name: match.name, dataQuality: match.dataQuality, source: match.source } : null,
+        alternatives: ranked.slice(1, 5).map((c) => ({ ...macros100(c), id: c.id, name: c.name })),
         nutrition: match ? nutritionFor(match, grams) : null,
       });
     }
@@ -84,6 +87,8 @@ export async function scanMeal(
     throw e;
   }
 }
+
+const macros100 = (f: FoodSearchResult) => ({ kcal100: f.kcal, protein100: f.proteinG, carbs100: f.carbsG, fat100: f.fatG, fibre100: f.fibreG });
 
 const clamp01 = (n: number) => Math.max(0, Math.min(1, Number.isFinite(n) ? n : 0));
 

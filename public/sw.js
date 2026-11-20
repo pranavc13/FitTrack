@@ -6,7 +6,7 @@
  *   This worker triggers that replay via Background Sync where the browser supports it.
  * - AI scanning and other cloud features require connectivity; offline requests fail fast.
  */
-const VERSION = "v1";
+const VERSION = "v3";
 const SHELL = `fittrack-shell-${VERSION}`;
 const RUNTIME = `fittrack-runtime-${VERSION}`;
 const API = `fittrack-api-${VERSION}`;
@@ -80,6 +80,8 @@ self.addEventListener("fetch", (event) => {
     if (CACHEABLE_API.some((re) => re.test(url.pathname))) event.respondWith(networkFirstApi(request));
     return;
   }
+  // Only content-hashed build files are safe to serve from cache; dev-server chunks keep the same URL.
+  if (url.pathname.startsWith("/_next/static/") && !/[-.][0-9a-f]{8,}\.(js|css)$|\/media\//.test(url.pathname)) return;
   if (url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/icons/") || /\.(woff2?|png|svg|ico)$/.test(url.pathname)) {
     event.respondWith(staleWhileRevalidate(request));
     return;

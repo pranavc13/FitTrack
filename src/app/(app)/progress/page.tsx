@@ -154,7 +154,7 @@ function WeightSheet({ open, onOpenChange, today, onSaved }: { open: boolean; on
   return (
     <Sheet open={open} onOpenChange={onOpenChange} title="Log weight">
       <div className="space-y-3">
-        <NumberInput suffix="kg" value={kg} onChange={(e) => setKg(e.target.value)} autoFocus placeholder="72.4" />
+        <NumberInput suffix="kg" value={kg} onChange={(e) => setKg(e.target.value)} autoFocus placeholder="Today's weight" />
         <Input type="date" value={date} max={today} onChange={(e) => setDate(e.target.value)} aria-label="Date" />
         <p className="text-xs text-muted">Daily weight swings of 0.5–2 kg are normal (water, salt, food). The trend line smooths these out.</p>
         <Button className="w-full" onClick={save} disabled={!(Number(kg) > 20)}>Save</Button>

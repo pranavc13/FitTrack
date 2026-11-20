@@ -12,11 +12,16 @@ export const GET = route(async ({ db, user }) => {
   return new NextResponse(JSON.stringify(data, null, 2), { headers: { "Content-Type": "application/json", "Content-Disposition": `attachment; filename="fittrack-export-${new Date().toISOString().slice(0, 10)}.json"`, "Cache-Control": "no-store" } });
 }, { limit: 5 });
 
-/** Permanent account deletion (requires password). */
+/** Permanent account deletion (requires the password, or the account email for Google-only accounts). */
 export const DELETE = route(async ({ db, user, req }) => {
-  const { password } = await body(req, z.object({ password: z.string().min(1) }));
+  const { password, confirmEmail } = await body(req, z.object({ password: z.string().min(1).optional(), confirmEmail: z.string().optional() }));
   const [row] = await db.select().from(s.users).where(eq(s.users.id, user.id));
-  if (!row || !(await verifyPassword(password, row.passwordHash))) throw new ApiError(403, "Password is incorrect");
+  if (!row) throw new ApiError(404, "Account not found");
+  if (row.passwordHash) {
+    if (!password || !(await verifyPassword(password, row.passwordHash))) throw new ApiError(403, "Password is incorrect");
+  } else if (confirmEmail?.trim().toLowerCase() !== row.email.toLowerCase()) {
+    throw new ApiError(403, "Type your account email to confirm");
+  }
   await deleteAccount(db, user.id);
   await destroySession();
   return { deleted: true };

@@ -8,6 +8,13 @@
       "when": 1795073417000,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1795194911480,
+      "tag": "0001_google_auth_fit_journal",
+      "breakpoints": true
     }
   ]
 }

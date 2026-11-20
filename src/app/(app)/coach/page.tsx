@@ -63,7 +63,9 @@ export default function CoachPage() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => endRef.current?.scrollIntoView({ behavior: "smooth" }), [messages, sending]);
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, sending]);
 
   async function open(id: number) {
     const r = await api.get<{ messages: Message[] }>(`/coach/${id}`);
