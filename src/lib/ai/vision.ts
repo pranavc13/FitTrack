@@ -8,6 +8,7 @@ import { imageParts, structuredCall, type ImageInput } from "./client";
 export const MealScanSchema = z.object({
   is_food: z.boolean().describe("False if the image does not show food or drink"),
   plate_notes: z.string().describe("Short description of the plate/scene, container sizes and any reference object used for scale"),
+  plate_diameter_cm: z.number().describe("Diameter of the main plate/thali in cm (dinner plate ≈ 25–27, quarter plate ≈ 18–20, steel thali ≈ 28–32); 0 if there is no plate"),
   items: z.array(
     z.object({
       name: z.string().describe("Specific dish or food name as commonly known in India, e.g. 'dal tadka', 'jeera rice', 'phulka roti'"),
@@ -20,6 +21,9 @@ export const MealScanSchema = z.object({
       container: z.string().describe("What the food is served in and how full, e.g. 'steel katori ~8 cm, 3/4 full', 'flat on plate', 'glass ~250 ml, full'"),
       container_kind: z.enum(["katori", "bowl", "glass", "cup", "plate", "pieces", "packaged", "other"]).describe("katori = small steel/ceramic serving bowl; bowl = larger serving bowl; plate = spread directly on the plate/thali; pieces = countable items (rotis, idlis)"),
       container_diameter_cm: z.number().describe("Inner rim diameter of the katori/bowl/glass/cup in cm, measured against the plate or another reference; 0 if not in a vessel"),
+      width_vs_plate: z.number().describe("Rim width of this katori/bowl/glass/cup as a fraction of the plate's diameter, judged side by side in the photo (a steel katori on a thali ≈ 0.25–0.33); 0 if there is no plate or it is not in a vessel"),
+      plate_area_fraction: z.number().describe("Only for container_kind 'plate': share of the plate's surface this food covers (e.g. 0.25 for a quarter); 0 otherwise"),
+      mound_height_cm: z.number().describe("Only for container_kind 'plate': height of the food's mound/heap at its highest point in cm (flat roti ≈ 0.5, rice heap ≈ 2.5–5, dry sabzi ≈ 1.5–3); 0 otherwise"),
       container_depth_cm: z.number().describe("Inner depth of that vessel in cm (steel katori ≈ 3.5–4.5, serving bowl ≈ 5–7, glass ≈ 10–12); 0 if not in a vessel"),
       fill_fraction: z.number().describe("How full the vessel is by height: 0.5 = half, 1 = level with the rim, up to 1.4 if heaped above it; 0 if not in a vessel"),
       density_g_per_ml: z.number().describe("Density of the food as served: dal/curry/kheer/curd/drinks ≈ 1.0, thick gravy/sabzi with pieces ≈ 0.85, dry sabzi ≈ 0.6, loosely heaped cooked rice ≈ 0.75, poha/upma ≈ 0.5"),
@@ -47,7 +51,8 @@ Rules:
 - Use names common in India (Hindi/regional names in parentheses where helpful).
 - You cannot weigh food from a photo, so estimate methodically:
   1. Establish scale: the plate/thali (standard dinner plate 25–27 cm, quarter plate 18–20 cm, steel thali 28–32 cm), a steel katori (7.5–9 cm across, holds ~150 ml when full), a spoon (~15 cm), a hand, a ₹10 coin (2.7 cm) or credit card (8.56 cm).
-  2. For every item in a katori, bowl, glass or cup, measure that vessel against the plate (a katori on a 30 cm thali spans roughly 1/4 of its width) and report container_diameter_cm, container_depth_cm, fill_fraction and density_g_per_ml. The app computes the volume from these, so measure carefully: look at the gap between the food surface and the rim, and whether the surface is level, sunken or heaped.
+  2. For every item in a katori, bowl, glass or cup, compare that vessel's rim with the plate side by side (width_vs_plate: a katori on a 30 cm thali spans roughly 1/4–1/3 of its width) and also report container_diameter_cm, container_depth_cm, fill_fraction and density_g_per_ml. The app computes the volume from these, so measure carefully: look at the gap between the food surface and the rim, and whether the surface is level, sunken or heaped. In angled photos a round rim looks oval — use its longest axis as the width.
+  2b. For food served directly on the plate (rice, pulao, poha, dry sabzi, salad), report plate_area_fraction (how much of the plate it covers) and mound_height_cm (how tall the heap is, judged from its shadow and side profile). Leave these 0 for items in vessels and for countable pieces.
   3. Estimate the volume the food occupies (container size × how full it is; heap height for rice/poha on the plate).
   4. Convert with density: dal/curry/sabzi gravy ≈ 1 g/ml; cooked rice ≈ 0.75 g/ml loosely heaped (1 cup ≈ 160 g); raita/curd ≈ 1 g/ml; dry sabzi ≈ 0.6 g/ml.
   5. For countable items use count × typical piece weight (container_kind "pieces").

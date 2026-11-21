@@ -91,8 +91,8 @@ export default function RecipesPage() {
       ) : data.recipes.length ? (
         <div className="grid gap-2.5 sm:grid-cols-2">
           {data.recipes.map((r) => (
-            <Link key={r.id} href={`/food/recipes/${r.id}`}>
-              <Card className="h-full p-3.5 hover:bg-surface-2">
+            <Link key={r.id} href={`/food/recipes/${r.id}`} prefetch={false}>
+              <Card className="h-full p-3.5 hover:bg-surface-2 [contain-intrinsic-size:auto_92px] [content-visibility:auto]">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="font-semibold leading-snug">{r.name}</p>

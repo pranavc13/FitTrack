@@ -3,7 +3,7 @@
 import { AlertTriangle, Barcode, Check, Loader2, Plus, RefreshCcw, ScanLine, Search, Sparkles, Tag, Trash2, WifiOff } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useCallback, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { CameraCapture, type Shot } from "@/components/scan/camera";
 import { FoodPicker } from "@/components/food/food-picker";
 import { AddFoodSheet, type FoodHit } from "@/components/food/add-food-sheet";
@@ -125,7 +125,21 @@ function MealScanner({ date, initialMeal, aiEnabled }: { date: string; initialMe
   const [shots, setShots] = useState<Shot[]>([]);
   // Detailed by default: portion accuracy matters more than a few seconds of speed.
   const [detailed, setDetailed] = useState(true);
-  const [plate, setPlate] = useState("");
+  // Plate size is the measuring stick for every katori and heap, so remember it once picked.
+  const [plate, setPlateState] = useState("");
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("ft_plate_cm");
+      if (saved) setPlateState(saved);
+    } catch {}
+  }, []);
+  const setPlate = (v: string) => {
+    setPlateState(v);
+    try {
+      if (v) localStorage.setItem("ft_plate_cm", v);
+      else localStorage.removeItem("ft_plate_cm");
+    } catch {}
+  };
   const [reference, setReference] = useState("");
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
@@ -302,7 +316,7 @@ function MealScanner({ date, initialMeal, aiEnabled }: { date: string; initialMe
     <div className="space-y-4">
       <CameraCapture shots={shots} setShots={setShots} max={3} overlay="plate" />
       <details className="rounded-2xl border border-line bg-surface p-4">
-        <summary className="cursor-pointer text-sm font-semibold">Improve accuracy (optional)</summary>
+        <summary className="cursor-pointer text-sm font-semibold">Improve accuracy (optional){plate ? ` · ${plate} cm plate` : " · set your plate size once"}</summary>
         <div className="mt-3 space-y-3">
           <Segmented size="sm" value={detailed ? "detailed" : "quick"} onChange={(v) => setDetailed(v === "detailed")} options={[{ value: "quick", label: "Quick scan" }, { value: "detailed", label: "Detailed scan" }]} />
           <div className="grid grid-cols-2 gap-3">

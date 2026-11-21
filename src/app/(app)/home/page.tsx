@@ -2,7 +2,6 @@
 
 import { ChevronRight, Droplets, Flame, Footprints, Moon, Plus, ScanLine, Sparkles, Target, Timer, Download, Dumbbell } from "lucide-react";
 import Link from "next/link";
-import { Area, AreaChart, ResponsiveContainer, YAxis } from "recharts";
 import { useAppState } from "@/components/providers";
 import { Badge, Button, Card, CardHeader, ErrorState, MacroStat, ProgressRing, Skeleton } from "@/components/ui/primitives";
 import { useToast } from "@/components/ui/toast";
@@ -228,18 +227,7 @@ export default function HomePage() {
             />
             {data.weight.trend.length > 1 ? (
               <div className="h-24">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={data.weight.trend}>
-                    <defs>
-                      <linearGradient id="wg" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0" stopColor="#B6F34A" stopOpacity={0.35} />
-                        <stop offset="1" stopColor="#B6F34A" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <YAxis domain={["dataMin - 0.5", "dataMax + 0.5"]} hide />
-                    <Area type="monotone" dataKey="trendKg" stroke="#B6F34A" strokeWidth={2.5} fill="url(#wg)" isAnimationActive={false} />
-                  </AreaChart>
-                </ResponsiveContainer>
+                <Sparkline values={data.weight.trend.map((p: { trendKg: number }) => p.trendKg)} />
               </div>
             ) : (
               <p className="text-sm text-muted">Log your weight a few times a week to see a smoothed trend.</p>
@@ -278,5 +266,28 @@ function HomeSkeleton() {
       </div>
       <Skeleton className="h-40" />
     </div>
+  );
+}
+
+/** Lightweight weight-trend line (plain SVG, so Home doesn't load a charting library). */
+function Sparkline({ values }: { values: number[] }) {
+  const pts = values.filter((v) => Number.isFinite(v));
+  if (pts.length < 2) return null;
+  const min = Math.min(...pts) - 0.5;
+  const max = Math.max(...pts) + 0.5;
+  const W = 300, H = 96, pad = 3;
+  const xy = pts.map((v, i) => [(i / (pts.length - 1)) * W, pad + (1 - (v - min) / (max - min)) * (H - pad * 2)] as const);
+  const line = xy.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="h-full w-full" role="img" aria-label="Weight trend">
+      <defs>
+        <linearGradient id="wg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#B6F34A" stopOpacity={0.35} />
+          <stop offset="1" stopColor="#B6F34A" stopOpacity={0} />
+        </linearGradient>
+      </defs>
+      <path d={`${line} L${W},${H} L0,${H} Z`} fill="url(#wg)" />
+      <path d={line} fill="none" stroke="#B6F34A" strokeWidth={2.5} vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
   );
 }

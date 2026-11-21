@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { SWRConfig } from "swr";
+import { SWRConfig, mutate as globalMutate } from "swr";
 import { ToastProvider, useToast } from "@/components/ui/toast";
 import { flushQueue, listQueue, onQueueChange, type QueuedRequest } from "@/lib/client/offline";
 import { invalidate } from "@/lib/client/api";
@@ -75,6 +75,8 @@ function AppStateProvider({ children }: { children: ReactNode }) {
       navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {});
       navigator.serviceWorker.addEventListener("message", (e) => {
         if (e.data?.type === "flush-queue") sync();
+        // The worker showed a saved copy on a slow network; the real response has now arrived.
+        if (e.data?.type === "api-updated" && typeof e.data.key === "string") void globalMutate(e.data.key);
       });
     } else if ("serviceWorker" in navigator) {
       // A worker left over from a production run would serve stale dev chunks and crash the app.

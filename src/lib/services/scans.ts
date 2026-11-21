@@ -30,6 +30,9 @@ export async function scanMeal(
   try {
     const { data, model } = await analyzeMealPhotos(input.images, { mode: input.mode, plateDiameterCm: input.plateDiameterCm, referenceObject: input.referenceObject, userNote: input.note });
     const items = [];
+    // The plate is the measuring stick: the size the user picked is exact, otherwise the model's own reading.
+    const userPlate = input.plateDiameterCm && input.plateDiameterCm >= 15 && input.plateDiameterCm <= 40 ? input.plateDiameterCm : null;
+    const plate = { diameterCm: userPlate ?? (data.plate_diameter_cm || null), known: userPlate != null };
     for (const it of data.is_food ? data.items : []) {
       // Pool the results of every search term, then keep the best candidate only if it really fits what the
       // photo shows; otherwise fall back to a labelled AI estimate rather than a confidently wrong food.
@@ -42,8 +45,8 @@ export async function scanMeal(
       const confident = scored[0]?.confident ? scored[0].c : null;
       const match = confident ?? (await estimatedFood(db, userId, it.name, aiPer100(it)));
       // Container geometry (katori size × fill level) blended with the model’s own gram estimate.
-      const geo = geometricPortion(it);
-      const portion = blendPortion({ grams: it.estimated_grams, low: it.grams_low, high: it.grams_high }, geo);
+      const geo = geometricPortion(it, plate);
+      const portion = blendPortion({ grams: it.estimated_grams, low: it.grams_low, high: it.grams_high }, geo, { trustGeometry: plate.known });
       const grams = portion.grams;
       const nConf = confident ? nutritionConfidence(confident, it.name) : 0.4;
       const [row] = await db
@@ -68,7 +71,7 @@ export async function scanMeal(
         count: it.count,
         householdMeasure: it.household_measure,
         container: it.container,
-        portionBasis: geo ? describeGeometry(it, geo.ml) : null,
+        portionBasis: geo ? describeGeometry(it, geo) : null,
         pieceGrams: it.count > 0 ? Math.round(grams / it.count) : null,
         visibleIngredients: it.visible_ingredients,
         estimatedGrams: grams,

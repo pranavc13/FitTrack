@@ -108,7 +108,7 @@ function Planner({ onGrocery }: { onGrocery: () => void }) {
               <ul className="space-y-1.5">
                 {d.items.map((it, i) => (
                   <li key={i}>
-                    <Link href={`/food/recipes/${it.recipeId}`} className="flex items-center justify-between gap-2 rounded-xl bg-surface-2 px-3 py-2 text-sm hover:bg-surface-3">
+                    <Link href={`/food/recipes/${it.recipeId}`} prefetch={false} className="flex items-center justify-between gap-2 rounded-xl bg-surface-2 px-3 py-2 text-sm hover:bg-surface-3">
                       <span className="min-w-0 truncate"><span className="text-xs uppercase text-faint">{it.slot}</span> · {it.name} <span className="text-muted">× {it.servings} {it.servingLabel.split(" (")[0]}</span></span>
                       <span className="shrink-0 tabular">{fmt.int(it.kcal)}</span>
                     </Link>
@@ -166,7 +166,7 @@ function CookWithWhatIHave() {
         res.results.length ? (
           <div className="space-y-2">
             {res.results.map((r) => (
-              <Link key={r.recipeId} href={`/food/recipes/${r.recipeId}`}>
+              <Link key={r.recipeId} href={`/food/recipes/${r.recipeId}`} prefetch={false}>
                 <Card className="p-3.5 hover:bg-surface-2">
                   <div className="flex justify-between gap-2"><p className="font-semibold">{r.name}</p><span className="text-sm tabular">{fmt.int(r.perServing.kcal)} kcal</span></div>
                   <p className="text-xs text-lime">Have: {r.matched.join(", ")}</p>

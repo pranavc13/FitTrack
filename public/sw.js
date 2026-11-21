@@ -6,7 +6,7 @@
  *   This worker triggers that replay via Background Sync where the browser supports it.
  * - AI scanning and other cloud features require connectivity; offline requests fail fast.
  */
-const VERSION = "v3";
+const VERSION = "v4";
 const SHELL = `fittrack-shell-${VERSION}`;
 const RUNTIME = `fittrack-runtime-${VERSION}`;
 const API = `fittrack-api-${VERSION}`;
@@ -29,19 +29,48 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-async function networkFirstApi(request) {
+// On patchy mobile data a request can hang for 20+ s before failing. If the network hasn't answered by
+// then and a previous copy exists, show that copy at once; when the real response lands, the cache is
+// refreshed and open pages are told to re-read it, so the screen never freezes and never stays stale.
+const SLOW_NETWORK_MS = 5000;
+
+async function fromCache(cached) {
+  const headers = new Headers(cached.headers);
+  headers.set("X-From-Cache", "1");
+  return new Response(await cached.blob(), { status: 200, headers });
+}
+
+async function announceFresh(request) {
+  const url = new URL(request.url);
+  const key = url.pathname.slice("/api/v1".length) + url.search;
+  const clients = await self.clients.matchAll({ type: "window" });
+  clients.forEach((c) => c.postMessage({ type: "api-updated", key }));
+}
+
+async function networkFirstApi(event) {
+  const { request } = event;
   const cache = await caches.open(API);
+  let servedCache = false;
+  const network = fetch(request);
+  // Attached first, so the clone is taken before the page reads the body.
+  event.waitUntil(
+    network
+      .then(async (res) => {
+        if (!res.ok) return;
+        await cache.put(request, res.clone());
+        if (servedCache) await announceFresh(request);
+      })
+      .catch(() => {}),
+  );
   try {
-    const res = await fetch(request);
-    if (res.ok) cache.put(request, res.clone());
-    return res;
+    const first = await Promise.race([network, new Promise((r) => setTimeout(r, SLOW_NETWORK_MS, "slow"))]);
+    if (first !== "slow") return first;
+    servedCache = true;
+    const cached = await cache.match(request);
+    return cached ? fromCache(cached) : network; // nothing saved yet: keep waiting for the network
   } catch {
     const cached = await cache.match(request);
-    if (cached) {
-      const headers = new Headers(cached.headers);
-      headers.set("X-From-Cache", "1");
-      return new Response(await cached.blob(), { status: 200, headers });
-    }
+    if (cached) return fromCache(cached);
     return new Response(JSON.stringify({ error: "You're offline and this data hasn't been loaded before." }), { status: 503, headers: { "Content-Type": "application/json" } });
   }
 }
@@ -77,7 +106,7 @@ self.addEventListener("fetch", (event) => {
 
   if (url.pathname.startsWith("/api/")) {
     if (url.pathname.startsWith("/api/v1/files/")) return; // private images: browser HTTP cache only
-    if (CACHEABLE_API.some((re) => re.test(url.pathname))) event.respondWith(networkFirstApi(request));
+    if (CACHEABLE_API.some((re) => re.test(url.pathname))) event.respondWith(networkFirstApi(event));
     return;
   }
   // Only content-hashed build files are safe to serve from cache; dev-server chunks keep the same URL.
