@@ -30,14 +30,18 @@ export async function scanMeal(
     const { data, model } = await analyzeMealPhotos(input.images, { mode: input.mode, plateDiameterCm: input.plateDiameterCm, referenceObject: input.referenceObject, userNote: input.note });
     const items = [];
     for (const it of data.is_food ? data.items : []) {
-      // Pool the results of every search term, then pick the one that fits what the photo shows.
+      // Pool the results of every search term, then keep the best candidate only if it really fits what the
+      // photo shows; otherwise fall back to a labelled AI estimate rather than a confidently wrong food.
       const terms = [it.name, ...it.search_terms].slice(0, 4);
       const pooled = new Map<number, FoodSearchResult>();
-      for (const term of terms) for (const c of await searchFoods(db, userId, term, { limit: 6 })) if (!pooled.has(c.id)) pooled.set(c.id, c);
-      const ranked = rankScanCandidates([...pooled.values()], { terms, isComposite: it.is_composite_dish, expectedKcal100: it.expected_kcal_per_100g });
-      const match = ranked[0] ?? null;
+      const results = await Promise.all(terms.map((term) => searchFoods(db, userId, term, { limit: 6 })));
+      for (const c of results.flat()) if (!pooled.has(c.id)) pooled.set(c.id, c);
+      const scored = scoreScanCandidates([...pooled.values()], { terms, isComposite: it.is_composite_dish, expectedKcal100: it.expected_kcal_per_100g });
+      const ranked = scored.map((x) => x.c);
+      const confident = scored[0]?.confident ? scored[0].c : null;
+      const match = confident ?? (await estimatedFood(db, userId, it.name, aiPer100(it)));
       const grams = Math.max(1, Math.round(it.estimated_grams));
-      const nConf = match ? round(nutritionConfidence(match, it.name) * (kcalFits(match.kcal, it.expected_kcal_per_100g) ? 1 : 0.5), 2) : 0;
+      const nConf = confident ? nutritionConfidence(confident, it.name) : 0.4;
       const [row] = await db
         .insert(s.foodScanItems)
         .values({
@@ -70,7 +74,7 @@ export async function scanMeal(
         nutritionConfidence: nConf,
         reasoning: it.reasoning,
         match: match ? { ...macros100(match), id: match.id, name: match.name, dataQuality: match.dataQuality, source: match.source } : null,
-        alternatives: ranked.slice(1, 5).map((c) => ({ ...macros100(c), id: c.id, name: c.name })),
+        alternatives: ranked.filter((c) => c.id !== match.id).slice(0, 4).map((c) => ({ ...macros100(c), id: c.id, name: c.name })),
         nutrition: match ? nutritionFor(match, grams) : null,
       });
     }
@@ -91,33 +95,89 @@ export function kcalFits(kcal: number | null, expected: number | null | undefine
   return Math.abs(kcal - expected) <= Math.max(25, expected * 0.5);
 }
 
+type ScanCandidate = Pick<FoodSearchResult, "name" | "kcal" | "foodType" | "state"> & { matchedSynonym?: string | null };
+interface ScanMatchCtx {
+  /** The detected name first, then the model's alternative search terms. */
+  terms: string[];
+  isComposite: boolean;
+  expectedKcal100?: number | null;
+}
+
+const MEAT = /\b(pork|beef|chicken|mutton|lamb|goat|fish|prawns?|shrimps?|crab|ham|bacon|sausages?|salami|turkey|duck|veal|tuna|salmon|sardines?|anchov\w*|eggs?|keema|meat)\b/i;
+// Filler words and generic dish words ("sabzi", "curry") say nothing about which food it is.
+const IGNORED = new Set(["and", "with", "of", "in", "the", "or", "ki", "ka", "ke", "sabzi", "sabji", "curry", "masala", "gravy", "dish", "style", "home", "side", "portion", "small", "bowl", "katori"]);
+
+// Words, with bracketed qualifiers like "(home style)" dropped and simple plurals folded ("onions" → "onion").
+const nameWords = (t: string) =>
+  new Set(
+    normalizeQuery(t.replace(/\([^)]*\)/g, " "))
+      .split(" ")
+      .filter((w) => w.length > 1 && !IGNORED.has(w))
+      .map((w) => (w.length > 3 && w.endsWith("s") && !w.endsWith("ss") ? w.slice(0, -1) : w)),
+  );
+
 /**
- * Orders food-search candidates for a photo-detected item: drop alcoholic mixes the model didn't see,
- * then records whose energy is implausible; among the rest prefer names that match the search terms
- * (all of a term's words present, few unrelated words), dishes for composite foods and prepared states.
- * Ties keep search-relevance order.
+ * Scores food-search candidates for a photo-detected item: alcoholic mixes the model didn't see and records
+ * with implausible energy sink; otherwise names sharing the detected name's words win (the detected name counts
+ * more than the alternative terms, and unrelated words in the record's name count against it), then dishes for
+ * composite foods and prepared states. Ties keep search-relevance order.
  */
-export function rankScanCandidates<T extends Pick<FoodSearchResult, "name" | "kcal" | "foodType" | "state">>(
-  candidates: T[],
-  ctx: { terms: string[]; isComposite: boolean; expectedKcal100?: number | null },
-): T[] {
+export function scoreScanCandidates<T extends ScanCandidate>(candidates: T[], ctx: ScanMatchCtx) {
   const sawAlcohol = ctx.terms.some((t) => ALCOHOL.test(t));
-  const words = (t: string) => new Set(normalizeQuery(t).split(" ").filter((w) => w.length > 1));
-  const termWords = ctx.terms.map(words);
+  const sawMeat = ctx.terms.some((t) => MEAT.test(t));
+  const termWords = ctx.terms.map(nameWords);
   const allTermWords = new Set(termWords.flatMap((w) => [...w]));
-  const overlap = (name: string) => {
-    const n = words(name);
-    const recall = Math.max(0, ...termWords.map((tw) => (tw.size ? [...tw].filter((w) => n.has(w)).length / tw.size : 0)));
-    const precision = n.size ? [...n].filter((w) => allTermWords.has(w)).length / n.size : 0;
-    return recall + precision;
-  };
-  const score = (c: T) =>
-    (!sawAlcohol && ALCOHOL.test(c.name) ? -10 : 0) +
-    (kcalFits(c.kcal, ctx.expectedKcal100) ? 0 : -5) +
-    overlap(c.name) +
-    (ctx.isComposite ? Number(c.foodType === "dish" || c.foodType === "restaurant") : 0) +
-    Number(c.state !== "raw") * 0.5;
-  return candidates.map((c, i) => ({ c, i, s: score(c) })).sort((a, b) => b.s - a.s || a.i - b.i).map((x) => x.c);
+  const normTerms = ctx.terms.map((t) => normalizeQuery(t));
+  return candidates
+    .map((c, i) => {
+      // A catalogue alias is as good as the name ("curd"/"dahi" are aliases of plain whole-milk yogurt).
+      const n = new Set([...nameWords(c.name), ...nameWords(c.matchedSynonym ?? "")]);
+      const own = nameWords(c.name);
+      const recall = Math.max(0, ...termWords.map((tw, ti) => (tw.size ? ([...tw].filter((w) => n.has(w)).length / tw.size) * (ti === 0 ? 1 : 0.75) : 0)));
+      const precision = own.size ? [...own].filter((w) => allTermWords.has(w)).length / own.size : 0;
+      const aliasHit = Boolean(c.matchedSynonym) && normTerms.includes(normalizeQuery(c.matchedSynonym!));
+      // Never swap in alcohol or meat/fish/egg the photo didn't show (e.g. "pickle" → a pork loaf).
+      const alcoholMismatch = (!sawAlcohol && ALCOHOL.test(c.name)) || (!sawMeat && MEAT.test(c.name));
+      const kcalOk = kcalFits(c.kcal, ctx.expectedKcal100);
+      const s =
+        (alcoholMismatch ? -10 : 0) +
+        (kcalOk ? 0 : -5) +
+        recall +
+        (aliasHit ? 1 : precision) +
+        (ctx.isComposite ? Number(c.foodType === "dish" || c.foodType === "restaurant") * 0.5 : 0) +
+        Number(c.state !== "raw") * 0.25;
+      // Confident = right energy density and the name (or an exact alias) genuinely describes the same food.
+      return { c, i, s, confident: !alcoholMismatch && kcalOk && (aliasHit || (recall >= 0.5 && precision >= 0.34)) };
+    })
+    .sort((a, b) => b.s - a.s || a.i - b.i);
+}
+
+export function rankScanCandidates<T extends ScanCandidate>(candidates: T[], ctx: ScanMatchCtx): T[] {
+  return scoreScanCandidates(candidates, ctx).map((x) => x.c);
+}
+
+/** Per-100 g values the vision model estimated, clamped to physically possible numbers. */
+export function aiPer100(it: { expected_kcal_per_100g: number; expected_protein_per_100g: number; expected_carbs_per_100g: number; expected_fat_per_100g: number; expected_fibre_per_100g: number }) {
+  const g = (v: number) => round(Math.min(100, Math.max(0, Number.isFinite(v) ? v : 0)), 1);
+  const proteinG = g(it.expected_protein_per_100g);
+  const carbsG = g(it.expected_carbs_per_100g);
+  const fatG = g(it.expected_fat_per_100g);
+  const fibreG = Math.min(g(it.expected_fibre_per_100g), carbsG);
+  // Energy from the model, but never below what the macros imply by more than 25 % (Atwater 4/4/9).
+  const macroKcal = proteinG * 4 + carbsG * 4 + fatG * 9;
+  const kcal = round(Math.min(902, Math.max(Number.isFinite(it.expected_kcal_per_100g) ? it.expected_kcal_per_100g : 0, macroKcal * 0.75)), 0);
+  return { kcal, proteinG, carbsG, fatG, fibreG };
+}
+
+/** A private, clearly labelled "AI estimate" food for a scanned dish the catalogue has no close match for. */
+async function estimatedFood(db: Db, userId: string, detectedName: string, per100: ReturnType<typeof aiPer100>) {
+  const name = `${detectedName.charAt(0).toUpperCase()}${detectedName.slice(1)} (AI estimate)`;
+  const values = { ...per100, dataQuality: "estimated" as const, confidence: 0.5, updatedAt: new Date() };
+  const [existing] = await db.select({ id: s.foods.id }).from(s.foods).where(and(eq(s.foods.ownerUserId, userId), eq(s.foods.name, name), eq(s.foods.dataQuality, "estimated")));
+  const [food] = existing
+    ? await db.update(s.foods).set(values).where(eq(s.foods.id, existing.id)).returning()
+    : await db.insert(s.foods).values({ name, ownerUserId: userId, foodType: "dish", state: "prepared", searchText: normalizeQuery(detectedName), ...values }).returning();
+  return { id: food!.id, name: food!.name, kcal: food!.kcal, proteinG: food!.proteinG, carbsG: food!.carbsG, fatG: food!.fatG, fibreG: food!.fibreG, dataQuality: "estimated", source: "AI estimate" } as FoodSearchResult;
 }
 
 const macros100 = (f: FoodSearchResult) => ({ kcal100: f.kcal, protein100: f.proteinG, carbs100: f.carbsG, fat100: f.fatG, fibre100: f.fibreG });

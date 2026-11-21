@@ -3,7 +3,7 @@ import { formData, readAndStoreImages } from "@/lib/server/uploads";
 import { scanLabel } from "@/lib/services/scans";
 import { aiConfigured } from "@/lib/ai/client";
 
-export const maxDuration = 90;
+export const maxDuration = 150;
 
 export const POST = route(
   async ({ db, user, req }) => {

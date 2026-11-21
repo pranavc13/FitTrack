@@ -17,10 +17,10 @@ export async function formData(req: NextRequest) {
  * Without image storage, scans still work (photos are analysed in memory and not kept); progress photos,
  * which only make sense stored, are refused with a clear message.
  */
-export async function readAndStoreImages(form: FormData, userId: string, folder: "scans" | "progress" | "labels", max = 3) {
+export async function readAndStoreImages(form: FormData, userId: string, folder: "scans" | "progress" | "labels", max = 3, opts: { store?: boolean } = {}) {
   const files = form.getAll("images").filter((f): f is File => f instanceof File && f.size > 0);
   if (!files.length) throw new ApiError(400, "Attach at least one photo");
-  const persist = storageAvailable();
+  const persist = opts.store !== false && storageAvailable();
   if (!persist && folder === "progress") throw new ApiError(503, "Photo storage isn't set up on this server yet, so progress photos can't be saved. Scans still work.");
   if (files.length > max) throw new ApiError(400, `At most ${max} photos`);
   const keys: string[] = [];

@@ -18,7 +18,11 @@ export const MealScanSchema = z.object({
       count: z.number().describe("Number of pieces if countable (rotis, idlis, eggs), else 0"),
       household_measure: z.string().describe("The portion in Indian household terms, e.g. '1 katori (~150 ml)', '2 medium phulkas', '1 cup', '3/4 dinner plate', '1 medium piece'"),
       container: z.string().describe("What the food is served in and how full, e.g. 'steel katori ~8 cm, 3/4 full', 'flat on plate', 'glass ~250 ml, full'"),
-      expected_kcal_per_100g: z.number().describe("Rough energy density per 100 g/ml of this exact item, only to sanity-check the database match (e.g. diet cola ≈ 1, regular cola ≈ 42, dal ≈ 110, paratha ≈ 300)"),
+      expected_kcal_per_100g: z.number().describe("Rough energy density per 100 g/ml of this exact item as served (e.g. diet cola ≈ 1, regular cola ≈ 42, dal tadka ≈ 100, chana curry ≈ 150, paratha ≈ 300, fried papad ≈ 450)"),
+      expected_protein_per_100g: z.number().describe("Typical protein g per 100 g of this item as served"),
+      expected_carbs_per_100g: z.number().describe("Typical carbohydrate g per 100 g of this item as served"),
+      expected_fat_per_100g: z.number().describe("Typical fat g per 100 g of this item as served"),
+      expected_fibre_per_100g: z.number().describe("Typical fibre g per 100 g of this item as served"),
       estimated_grams: z.number().describe("Best estimate of the edible portion weight in grams"),
       grams_low: z.number().describe("Plausible lower bound in grams"),
       grams_high: z.number().describe("Plausible upper bound in grams"),
@@ -45,7 +49,8 @@ Rules:
 - Typical servings: 1 full katori dal/sabzi ≈ 150 g, a restaurant curry bowl ≈ 250–300 g, a full dinner plate of rice ≈ 200–250 g cooked, a glass of lassi/chaas ≈ 250 ml.
 - Give a best estimate plus a realistic low/high range, and set quantity_confidence honestly (usually 0.3–0.7; higher only with a clear scale reference or countable pieces).
 - Always fill household_measure so the user can sanity-check the grams, and container with the scale cue you used.
-- Nutrients come from the app's database, not from you. Only give expected_kcal_per_100g as a rough sanity check so a wrong match (e.g. "rum and diet cola" for a Diet Coke) can be rejected. Diet / zero / sugar-free drinks, black coffee, plain tea and water are ≈ 0–5 kcal per 100 ml.
+- Nutrients come from the app's database when it has a close match. Your expected_*_per_100g values are used to reject a wrong match (e.g. "rum and diet cola" for a Diet Coke, besan flour for a chana curry) and as a labelled estimate when the database has no close match, so give realistic values for the dish as cooked and served. Diet / zero / sugar-free drinks, black coffee, plain tea and water are ≈ 0–5 kcal per 100 ml.
+- search_terms: the dish's common names and spellings first (e.g. "kala chana curry" → "kala chana", "black chickpea curry", "chickpeas cooked"); avoid generic terms that describe a different dish (e.g. "lentil soup" for dal tadka).
 - For packaged products, put the variant in the name and search terms (e.g. "Diet Coke" → "diet cola", "cola, diet", "soft drink, cola, diet"); never drop words like diet, zero, light, sugar-free or unsweetened.
 - Drinks: estimated_grams is the volume in ml (≈ grams); a can is 300 ml (slim) or 330 ml unless the label says otherwise.
 - If something is ambiguous (paneer vs tofu, ghee vs oil, sugar in tea), say so in questions.

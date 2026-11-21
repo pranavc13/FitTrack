@@ -110,11 +110,11 @@ function ConfidenceRow({ label, value }: { label: string; value: number }) {
   );
 }
 
-const pickMacros = (m: Macros100 & { id: number; name: string }) => ({ id: m.id, name: m.name, kcal100: m.kcal100, protein100: m.protein100, carbs100: m.carbs100 ?? null, fat100: m.fat100 ?? null, fibre100: m.fibre100 ?? null });
+const pickMacros = (m: Macros100 & { id: number; name: string; dataQuality?: string }) => ({ id: m.id, name: m.name, kcal100: m.kcal100, protein100: m.protein100, carbs100: m.carbs100 ?? null, fat100: m.fat100 ?? null, fibre100: m.fibre100 ?? null, estimated: m.dataQuality === "estimated" });
 
 interface EditableItem extends ScanItem {
   grams: number;
-  food: (Macros100 & { id: number; name: string }) | null;
+  food: (Macros100 & { id: number; name: string; estimated?: boolean }) | null;
   removed?: boolean;
 }
 
@@ -200,7 +200,7 @@ function MealScanner({ date, initialMeal, aiEnabled }: { date: string; initialMe
                   <div className="min-w-0">
                     <p className="font-semibold capitalize">{it.detectedName}</p>
                     {it.householdMeasure ? <p className="text-sm font-medium text-lime">≈ {it.householdMeasure} · {it.estimatedGrams} g</p> : null}
-                    <p className="truncate text-xs text-muted">{it.food ? `Matched: ${it.food.name}` : "No database match — choose a food"}{it.cookingStyle && it.cookingStyle !== "unknown" ? ` · ${it.cookingStyle}` : ""}</p>
+                    <p className="truncate text-xs text-muted">{it.food ? (it.food.estimated ? "AI estimate — no close database match (tap an option below to swap)" : `Matched: ${it.food.name}`) : "No database match — choose a food"}{it.cookingStyle && it.cookingStyle !== "unknown" ? ` · ${it.cookingStyle}` : ""}</p>
                   </div>
                   <button onClick={() => setItems(items.map((x, i) => (i === idx ? { ...x, removed: true } : x)))} className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-surface-2 text-muted hover:text-red" aria-label={`Remove ${it.detectedName}`}>
                     <Trash2 className="h-4 w-4" />

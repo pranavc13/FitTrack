@@ -11,7 +11,8 @@ export const POST = route(
   async ({ db, user, req }) => {
     if (!aiConfigured()) throw new ApiError(503, "Reading barcodes from photos needs AI, which isn't configured. Type the number under the barcode instead.");
     const form = await formData(req);
-    const { images } = await readAndStoreImages(form, user.id, "labels", 1);
+    // The photo is only needed to read the digits, so it is never stored.
+    const { images } = await readAndStoreImages(form, user.id, "labels", 1, { store: false });
     const { data } = await readBarcodePhoto(images);
     const digits = data.digits?.replace(/\D/g, "") ?? "";
     if (!/^\d{8,14}$/.test(digits)) {
