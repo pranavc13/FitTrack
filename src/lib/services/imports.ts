@@ -168,10 +168,14 @@ export function parseImportFile(filename: string, buf: Buffer, tz: string): Pars
     }
     const entries = zip.getEntries().filter((e) => !e.isDirectory && /fit|health|activity|session|steps/i.test(e.entryName));
     let total = 0;
+    const tooBig = () => new ApiError(413, "ZIP expands to more than 200 MB");
+    // Check the declared size first, then the real one: a forged header can claim 0 bytes.
+    if (entries.reduce((a, e) => a + e.header.size, 0) > 200 * 1024 * 1024) throw tooBig();
     for (const e of entries) {
-      total += e.header.size;
-      if (total > 200 * 1024 * 1024) throw new ApiError(413, "ZIP expands to more than 200 MB");
-      handle(e.entryName, e.getData());
+      const data = e.getData();
+      total += data.length;
+      if (total > 200 * 1024 * 1024) throw tooBig();
+      handle(e.entryName, data);
     }
     if (!entries.length) errors.push("No Google Fit / health files found in the ZIP (looked for Fit/Daily activity metrics and All Sessions)");
   } else if (lower.endsWith(".csv") || lower.endsWith(".json")) handle(filename, buf);

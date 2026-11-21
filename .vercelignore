@@ -1,0 +1,9 @@
+# Local-only data and secrets (never uploaded to Vercel)
+.data
+uploads
+data/raw
+.env
+.env.local
+.next
+coverage
+*.tsbuildinfo

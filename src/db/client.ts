@@ -21,7 +21,9 @@ const MIGRATIONS = path.join(process.cwd(), "drizzle");
 export async function createDb(url?: string, opts: { migrate?: boolean } = {}): Promise<Db> {
   if (url && /^postgres(ql)?:\/\//.test(url)) {
     const { default: postgres } = await import("postgres");
-    const client = postgres(url, { max: Number(process.env.DB_POOL_SIZE ?? 5), prepare: false });
+    // prepare: false is required by transaction-mode poolers (Supabase :6543); idle connections are closed
+    // before the pooler or a frozen serverless instance drops them.
+    const client = postgres(url, { max: Number(process.env.DB_POOL_SIZE ?? 5), prepare: false, idle_timeout: 20, connect_timeout: 15 });
     const db = drizzlePg(client, { schema });
     if (opts.migrate) await migratePg(db, { migrationsFolder: MIGRATIONS });
     return db as unknown as Db;

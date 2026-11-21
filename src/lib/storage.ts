@@ -13,6 +13,12 @@ const ALLOWED: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png
 export const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 
 const driver = () => (process.env.STORAGE_DRIVER ?? "local") as "local" | "s3";
+
+/** Whether images can be kept: S3 configured, or local disk outside serverless (Vercel's filesystem is ephemeral). */
+export function storageAvailable() {
+  if (driver() === "s3") return Boolean(process.env.S3_BUCKET && process.env.S3_ACCESS_KEY_ID && process.env.S3_SECRET_ACCESS_KEY);
+  return !process.env.VERCEL;
+}
 const LOCAL_ROOT = path.join(process.cwd(), "uploads");
 
 function s3() {
