@@ -18,6 +18,11 @@ export const MealScanSchema = z.object({
       count: z.number().describe("Number of pieces if countable (rotis, idlis, eggs), else 0"),
       household_measure: z.string().describe("The portion in Indian household terms, e.g. '1 katori (~150 ml)', '2 medium phulkas', '1 cup', '3/4 dinner plate', '1 medium piece'"),
       container: z.string().describe("What the food is served in and how full, e.g. 'steel katori ~8 cm, 3/4 full', 'flat on plate', 'glass ~250 ml, full'"),
+      container_kind: z.enum(["katori", "bowl", "glass", "cup", "plate", "pieces", "packaged", "other"]).describe("katori = small steel/ceramic serving bowl; bowl = larger serving bowl; plate = spread directly on the plate/thali; pieces = countable items (rotis, idlis)"),
+      container_diameter_cm: z.number().describe("Inner rim diameter of the katori/bowl/glass/cup in cm, measured against the plate or another reference; 0 if not in a vessel"),
+      container_depth_cm: z.number().describe("Inner depth of that vessel in cm (steel katori ≈ 3.5–4.5, serving bowl ≈ 5–7, glass ≈ 10–12); 0 if not in a vessel"),
+      fill_fraction: z.number().describe("How full the vessel is by height: 0.5 = half, 1 = level with the rim, up to 1.4 if heaped above it; 0 if not in a vessel"),
+      density_g_per_ml: z.number().describe("Density of the food as served: dal/curry/kheer/curd/drinks ≈ 1.0, thick gravy/sabzi with pieces ≈ 0.85, dry sabzi ≈ 0.6, loosely heaped cooked rice ≈ 0.75, poha/upma ≈ 0.5"),
       expected_kcal_per_100g: z.number().describe("Rough energy density per 100 g/ml of this exact item as served (e.g. diet cola ≈ 1, regular cola ≈ 42, dal tadka ≈ 100, chana curry ≈ 150, paratha ≈ 300, fried papad ≈ 450)"),
       expected_protein_per_100g: z.number().describe("Typical protein g per 100 g of this item as served"),
       expected_carbs_per_100g: z.number().describe("Typical carbohydrate g per 100 g of this item as served"),
@@ -42,10 +47,11 @@ Rules:
 - Use names common in India (Hindi/regional names in parentheses where helpful).
 - You cannot weigh food from a photo, so estimate methodically:
   1. Establish scale: the plate/thali (standard dinner plate 25–27 cm, quarter plate 18–20 cm, steel thali 28–32 cm), a steel katori (7.5–9 cm across, holds ~150 ml when full), a spoon (~15 cm), a hand, a ₹10 coin (2.7 cm) or credit card (8.56 cm).
-  2. Estimate the volume the food occupies (container size × how full it is; heap height for rice/poha).
-  3. Convert with density: dal/curry/sabzi gravy ≈ 1 g/ml; cooked rice ≈ 0.75 g/ml loosely heaped (1 cup ≈ 160 g); raita/curd ≈ 1 g/ml; dry sabzi ≈ 0.6 g/ml.
-  4. For countable items use count × typical piece weight.
-- Typical piece weights: phulka 30–35 g, tawa roti 40–45 g, plain paratha 70–90 g, aloo paratha 110–140 g, puri 25–30 g, naan 90–120 g, idli 40–50 g, plain dosa 80–110 g, masala dosa 160–220 g, vada 40–50 g, samosa 60–90 g, boiled egg 50 g, gulab jamun 40–50 g, chicken leg piece ~120 g with bone (~80 g edible — estimate the edible part), paneer cube ~10–15 g.
+  2. For every item in a katori, bowl, glass or cup, measure that vessel against the plate (a katori on a 30 cm thali spans roughly 1/4 of its width) and report container_diameter_cm, container_depth_cm, fill_fraction and density_g_per_ml. The app computes the volume from these, so measure carefully: look at the gap between the food surface and the rim, and whether the surface is level, sunken or heaped.
+  3. Estimate the volume the food occupies (container size × how full it is; heap height for rice/poha on the plate).
+  4. Convert with density: dal/curry/sabzi gravy ≈ 1 g/ml; cooked rice ≈ 0.75 g/ml loosely heaped (1 cup ≈ 160 g); raita/curd ≈ 1 g/ml; dry sabzi ≈ 0.6 g/ml.
+  5. For countable items use count × typical piece weight (container_kind "pieces").
+- Typical piece weights: phulka 30–35 g, tawa roti 40–45 g, plain paratha 70–90 g, aloo paratha 110–140 g, puri 25–30 g, naan 90–120 g, idli 40–50 g, plain dosa 80–110 g, masala dosa 160–220 g, vada 40–50 g, samosa 60–90 g, boiled egg 50 g, gulab jamun 40–50 g, chicken leg piece ~120 g with bone (~80 g edible — estimate the edible part), paneer cube ~10–15 g, bhatura 70–90 g, kulcha 80–100 g, thepla 35–45 g, pav 35–40 g, uttapam 120–160 g, medu vada 45–55 g, dhokla piece 25–35 g, jalebi 20–30 g, rasgulla 40–50 g, kachori 50–70 g, momo 25–30 g.
 - Typical servings: 1 full katori dal/sabzi ≈ 150 g, a restaurant curry bowl ≈ 250–300 g, a full dinner plate of rice ≈ 200–250 g cooked, a glass of lassi/chaas ≈ 250 ml.
 - Give a best estimate plus a realistic low/high range, and set quantity_confidence honestly (usually 0.3–0.7; higher only with a clear scale reference or countable pieces).
 - Always fill household_measure so the user can sanity-check the grams, and container with the scale cue you used.

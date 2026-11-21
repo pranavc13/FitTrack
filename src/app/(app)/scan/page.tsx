@@ -29,6 +29,7 @@ interface ScanItem {
   count?: number;
   householdMeasure?: string;
   container?: string;
+  portionBasis?: string | null;
   pieceGrams?: number | null;
   estimatedGrams: number;
   gramsLow: number;
@@ -241,7 +242,7 @@ function MealScanner({ date, initialMeal, aiEnabled }: { date: string; initialMe
                   <ConfidenceRow label="Recognition" value={it.recognitionConfidence} />
                   <ConfidenceRow label="Quantity" value={it.quantityConfidence} />
                   <ConfidenceRow label="Nutrition data" value={it.nutritionConfidence} />
-                  {it.container ? <p className="pt-1 text-[11px] text-faint">Scale: {it.container}</p> : null}
+                  {it.portionBasis ? <p className="pt-1 text-[11px] text-faint">Measured: {it.portionBasis}</p> : it.container ? <p className="pt-1 text-[11px] text-faint">Scale: {it.container}</p> : null}
                   {it.reasoning ? <p className="pt-1 text-[11px] text-faint">{it.reasoning}</p> : null}
                 </div>
               </Card>

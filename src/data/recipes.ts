@@ -1,4 +1,5 @@
 import type { IngredientKey } from "./ingredients";
+import { EXTRA_RECIPES } from "./recipes-extra";
 
 /**
  * Typical Indian (and some international) recipes, expressed as raw ingredient quantities.
@@ -38,7 +39,7 @@ export const RECIPE_VARIANT_GROUPS: Record<string, { name: string; description: 
   poha: { name: "Poha", description: "Maharashtrian vs Indori (sev topping)" },
 };
 
-export const SEED_RECIPES: SeedRecipe[] = [
+const BASE_RECIPES: SeedRecipe[] = [
   /* ---------------- Breads ---------------- */
   {
     slug: "phulka-roti", name: "Roti / Phulka (no fat)", nameHi: "रोटी / फुलका", aliases: ["chapati", "roti", "phulka", "chapathi"], region: "North Indian",
@@ -747,3 +748,6 @@ export const SEED_RECIPES: SeedRecipe[] = [
     instructions: ["Mix oats, milk, yogurt and chia; refrigerate overnight; top with banana and honey."],
   },
 ];
+
+/** Everything the seed script loads: the original set plus the extra dishes and plates. */
+export const SEED_RECIPES: SeedRecipe[] = [...BASE_RECIPES, ...EXTRA_RECIPES];

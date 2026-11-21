@@ -2,9 +2,10 @@
 
 import { BarChart3, CloudOff, Dumbbell, HeartPulse, Home, LineChart, RefreshCw, ScanLine, Sparkles, Target, User, UtensilsCrossed, Droplets } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, type ReactNode } from "react";
 import { useAppState } from "@/components/providers";
+import { useApi } from "@/lib/client/api";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -35,9 +36,15 @@ function SyncPill() {
   );
 }
 
-export function AppShell({ children, userName }: { children: ReactNode; userName: string }) {
+export function AppShell({ children }: { children: ReactNode }) {
   const path = usePathname();
-  const initials = userName.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase();
+  const router = useRouter();
+  // Shared SWR key: pages that read /auth/me reuse this response instead of fetching again.
+  const me = useApi<{ user: { name: string } | null; profile: { onboardedAt: string | null } | null }>("/auth/me");
+  useEffect(() => {
+    if (me.data && !me.data.profile?.onboardedAt) router.replace("/onboarding");
+  }, [me.data, router]);
+  const initials = (me.data?.user?.name ?? "").split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase();
   return (
     <div className="min-h-dvh lg:flex">
       {/* Desktop sidebar */}

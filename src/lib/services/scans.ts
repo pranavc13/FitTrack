@@ -5,6 +5,7 @@ import { analyzeMealPhotos, extractLabel, type LabelScan } from "@/lib/ai/vision
 import { AI_MODEL, type ImageInput } from "@/lib/ai/client";
 import { CORE_NUTRIENTS, round, scaleNutrients, validatePer100g, type Nutrients } from "@/lib/nutrition/engine";
 import { ApiError, notFound } from "@/lib/errors";
+import { blendPortion, describeGeometry, geometricPortion } from "@/lib/nutrition/portion";
 import { normalizeQuery, per100, searchFoods, type FoodSearchResult } from "./foods";
 
 const QUALITY_WEIGHT: Record<string, number> = { verified: 1, calculated: 0.85, crowdsourced: 0.75, user: 0.7, estimated: 0.6, ocr: 0.5 };
@@ -40,7 +41,10 @@ export async function scanMeal(
       const ranked = scored.map((x) => x.c);
       const confident = scored[0]?.confident ? scored[0].c : null;
       const match = confident ?? (await estimatedFood(db, userId, it.name, aiPer100(it)));
-      const grams = Math.max(1, Math.round(it.estimated_grams));
+      // Container geometry (katori size × fill level) blended with the model’s own gram estimate.
+      const geo = geometricPortion(it);
+      const portion = blendPortion({ grams: it.estimated_grams, low: it.grams_low, high: it.grams_high }, geo);
+      const grams = portion.grams;
       const nConf = confident ? nutritionConfidence(confident, it.name) : 0.4;
       const [row] = await db
         .insert(s.foodScanItems)
@@ -49,8 +53,8 @@ export async function scanMeal(
           detectedName: it.name,
           matchedFoodId: match?.id ?? null,
           estimatedGrams: grams,
-          gramsLow: Math.round(it.grams_low),
-          gramsHigh: Math.round(it.grams_high),
+          gramsLow: portion.low,
+          gramsHigh: portion.high,
           recognitionConfidence: clamp01(it.recognition_confidence),
           quantityConfidence: clamp01(it.quantity_confidence),
           nutritionConfidence: nConf,
@@ -64,11 +68,12 @@ export async function scanMeal(
         count: it.count,
         householdMeasure: it.household_measure,
         container: it.container,
+        portionBasis: geo ? describeGeometry(it, geo.ml) : null,
         pieceGrams: it.count > 0 ? Math.round(grams / it.count) : null,
         visibleIngredients: it.visible_ingredients,
         estimatedGrams: grams,
-        gramsLow: Math.round(it.grams_low),
-        gramsHigh: Math.round(it.grams_high),
+        gramsLow: portion.low,
+        gramsHigh: portion.high,
         recognitionConfidence: clamp01(it.recognition_confidence),
         quantityConfidence: clamp01(it.quantity_confidence),
         nutritionConfidence: nConf,
